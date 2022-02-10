@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <handlers/WindowHandler_windows.h>
+#include <handlers/inputHandler_windows.h>
 
 int main()
 {
@@ -33,14 +34,30 @@ int main()
     // no need accelerator table
     //HACCEL hAccelTable{ LoadAccelerators(GetModuleHandle(NULL), )}
 
-    for (MSG msg; GetMessage(&msg, nullptr, 0, 0);)
-    {
-        //TranslateMessage(&msg);
-        DispatchMessage(&msg);
+    inputHandler::initialize();
 
-        //static int i{ 0 };
-        //printf_s("i: %d\n", i++);
+    for (bool bLoop{ true }; bLoop;)
+    {
+        for (MSG msg; PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE); DispatchMessage(&msg))
+        {
+            if (msg.message == WM_QUIT)bLoop = false;
+        }
+        // loop here?
+        inputHandler::update();
+        inputHandler::debugPrint(0x101);
+        if (inputHandler::isTriggered(VK_ESCAPE))bLoop = false;
     }
+    //for (MSG msg; GetMessage(&msg, nullptr, 0, 0);)
+    //{
+    //    //TranslateMessage(&msg);
+    //    DispatchMessage(&msg);
+    //    inputHandler::update();
+
+    //    inputHandler::debugPrint(0x111);
+
+    //    //static int i{ 0 };
+    //    //printf_s("i: %d\n", i++);
+    //}
 
     windowHandler::destroyInstance();
 

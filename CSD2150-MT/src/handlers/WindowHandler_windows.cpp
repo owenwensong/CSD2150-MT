@@ -8,6 +8,7 @@
 *******************************************************************************/
 
 #include <handlers/WindowHandler_windows.h>
+#include <handlers/inputHandler_windows.h>  // to let it use WHWndProc
 #include <cstdio>
 
 #define FULL_STYLE_HELPER (WS_POPUP | WS_CLIPSIBLINGS | WS_CLIPCHILDREN)
@@ -28,17 +29,37 @@ LRESULT CALLBACK WHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) n
         printf_s("pressed: %c\n", static_cast<char>(wParam));
         break;
     case WM_LBUTTONDOWN:
+        inputHandler::setVKTrigger(VK_LBUTTON);
+        break;
+    case WM_LBUTTONUP:
+        inputHandler::setVKRelease(VK_LBUTTON);
+        break;
     case WM_RBUTTONDOWN:
+        inputHandler::setVKTrigger(VK_RBUTTON);
+        break;
+    case WM_RBUTTONUP:
+        inputHandler::setVKRelease(VK_RBUTTON);
+        break;
     case WM_MBUTTONDOWN:
-    case WM_XBUTTONDOWN:
-        {
-            const int x{ static_cast<int>(lParam & 0xffff) }, y{ static_cast<int>(lParam >> 16) };
-            printf_s("MOUSE %zu BUTTON DOWN: %d, %d\n", wParam & 0xff, x, y);
-            // bits set, use & 
-        }
+        inputHandler::setVKTrigger(VK_MBUTTON);
+        break;
+    case WM_MBUTTONUP:
+        inputHandler::setVKRelease(VK_MBUTTON);
+        break;
+    case WM_XBUTTONDOWN: // use higher order value masks
+        if (wParam & 0x10000)inputHandler::setVKTrigger(VK_XBUTTON1);
+        if (wParam & 0x20000)inputHandler::setVKTrigger(VK_XBUTTON2);
+        break;
+    case WM_XBUTTONUP:   // use higher order value masks
+        if (wParam & 0x10000)inputHandler::setVKRelease(VK_XBUTTON1);
+        if (wParam & 0x20000)inputHandler::setVKRelease(VK_XBUTTON2);
         break;
     case WM_KEYDOWN:
-        printf_s("keydown: %zu\n", wParam);
+        if (lParam & 0x40000000)break;// ignore repeat message
+        inputHandler::setVKTrigger(static_cast<inputHandler::keyIdx_T>(wParam));
+        break;
+    case WM_KEYUP:
+        inputHandler::setVKRelease(static_cast<inputHandler::keyIdx_T>(wParam));
         break;
     case WM_SYSCOMMAND:
         if (SC_KEYMENU == wParam)return 0;// disable alt-space
