@@ -17,11 +17,16 @@ namespace inputHandler
     
     using KSContainer = std::bitset<NUM_VK_KEYS>;   // Key State Container
 
-    static KSContainer keystatesTriggeredA;
-    static KSContainer keystatesTriggeredB;
+    static KSContainer keystatesTriggeredA; // 1 for triggered
+    static KSContainer keystatesTriggeredB; // 0 otherwise
     static KSContainer keystatesPressed;
-    static KSContainer keystatesReleasedA;
-    static KSContainer keystatesReleasedB;
+    static KSContainer keystatesReleasedA;  // 0 for released
+    static KSContainer keystatesReleasedB;  // 1 otherwise
+
+    // extremely rare case where tabbing in and releasing will get pressed stuck
+    // until another release comes, so released bit representation flipped to use
+    // AND operation just as effectively
+    //keystatesPressed ^= *pReleasedCurrent;  // XOR to unset (experimental)
 
     static KSContainer* pTriggeredAccumulate{ &keystatesTriggeredA };
     static KSContainer* pTriggeredCurrent{ &keystatesTriggeredB };
@@ -39,8 +44,8 @@ void inputHandler::initialize() noexcept
     keystatesTriggeredA.reset();
     keystatesTriggeredB.reset();
     keystatesPressed.reset();
-    keystatesReleasedA.reset();
-    keystatesReleasedB.reset();
+    keystatesReleasedA.set();
+    keystatesReleasedB.set();
 }
 
 void inputHandler::update() noexcept
@@ -49,10 +54,9 @@ void inputHandler::update() noexcept
     std::swap(pTriggeredAccumulate, pTriggeredCurrent);
     std::swap(pReleasedAccumulate, pReleasedCurrent);
     pTriggeredAccumulate->reset();
-    pReleasedAccumulate->reset();
+    pReleasedAccumulate->set();     // reversed bit representation
     keystatesPressed |= *pTriggeredCurrent; // OR to set pressed
-    keystatesPressed ^= *pReleasedCurrent;  // XOR to unset (experimental)
-
+    keystatesPressed &= *pReleasedCurrent;  // AND to unset (0 means released)
 
 }
 
@@ -71,7 +75,7 @@ bool inputHandler::isPressed(keyIdx_T vkCode) noexcept
 
 bool inputHandler::isReleased(keyIdx_T vkCode) noexcept
 {
-    return pReleasedCurrent->test(vkCode);
+    return !pReleasedCurrent->test(vkCode); // bit 0 means released
 }
 
 bool inputHandler::anyTriggered() noexcept
@@ -142,6 +146,8 @@ if (flagRPT & 0x100 && inputHandler::isReleased(vkc))printf_s("%s RELEASED\n", #
     MY_IH_TMP_DEBUG_MACRO(VK_7);
     MY_IH_TMP_DEBUG_MACRO(VK_8);
     MY_IH_TMP_DEBUG_MACRO(VK_9);
+
+    MY_IH_TMP_DEBUG_MACRO(VK_TAB);
 #undef MY_IH_TMP_DEBUG_MACRO
 }
 
@@ -155,7 +161,7 @@ void inputHandler::setVKTrigger(keyIdx_T vkCode) noexcept
 
 void inputHandler::setVKRelease(keyIdx_T vkCode) noexcept
 {
-    pReleasedAccumulate->set(vkCode);
+    pReleasedAccumulate->reset(vkCode);// bit 0 means released
 }
 
 // *****************************************************************************

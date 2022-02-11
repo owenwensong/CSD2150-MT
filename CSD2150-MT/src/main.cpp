@@ -25,7 +25,7 @@ int main()
         return -1;
     }
 
-    if (pWH->createWindow(1920, 1080, false) == false)
+    if (pWH->createWindow(1280, 720, false) == false)
     {
         printf_s("FAILED TO CREATE WINDOW\n");
         return -2;
