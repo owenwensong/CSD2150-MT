@@ -10,25 +10,29 @@
 #ifndef VULKAN_DEVICE_HELPER_HEADER
 #define VULKAN_DEVICE_HELPER_HEADER
 
+#include <vulkanHelpers/vulkanInstance.h>
 #include <vulkan/vulkan.h>
+#include <memory>
 #include <vector>
 
 class vulkanDevice
 {
 public:
 
-    bool createThisDevice(VkInstance pVKInstT, bool validationLayersOn);
+    bool createThisDevice(std::shared_ptr<vulkanInstance>* optionalOverride = nullptr);
 
     // ????????????
-    bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties, bool validationLayersOn);
-    bool createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties, bool validationLayersOn);
+    bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties);
+    bool createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties);
 
     bool OK() const noexcept;
     vulkanDevice();
-    vulkanDevice(VkInstance pVKInstT, bool validationLayersOn);
+    vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst);
+    ~vulkanDevice();
 
 private:
     
+    std::shared_ptr<vulkanInstance> m_pVKInst;
     VkPhysicalDevice m_VKPhysicalDevice{};
     VkDevice m_VKDevice{};
     uint32_t m_MainQueueIndex{};

@@ -48,6 +48,9 @@
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp">
       <Filter>Source Files\vulkanHelpers</Filter>
     </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\utility\Singleton.h">
@@ -72,6 +75,9 @@
       <Filter>Header Files\vulkanHelpers</Filter>
     </ClInclude>
     <ClInclude Include="include\vulkanHelpers\printWarnings.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanInstance.h">
       <Filter>Header Files\vulkanHelpers</Filter>
     </ClInclude>
   </ItemGroup>

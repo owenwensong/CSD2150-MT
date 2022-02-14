@@ -7,18 +7,17 @@
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
-#include <handlers/graphicsHandler_vulkan.h>    // no circular, not in header. (still bad though)
-#include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/printWarnings.h>
+#include <vulkanHelpers/vulkanDevice.h>
 #include <algorithm>
 #include <array>
 
-std::vector<VkPhysicalDevice> collectPhysicalDevices(VkInstance pVKInstT)
+std::vector<VkPhysicalDevice> collectPhysicalDevices(vulkanInstance& vkInst)
 {
     
     // get the number of physical devices
     uint32_t numPhysicalDevices{ 0 };
-    if (VkResult tmpRes{ vkEnumeratePhysicalDevices(pVKInstT, &numPhysicalDevices, nullptr) }; tmpRes != VK_SUCCESS || numPhysicalDevices <= 0)
+    if (VkResult tmpRes{ vkEnumeratePhysicalDevices(vkInst.m_VkHandle, &numPhysicalDevices, nullptr) }; tmpRes != VK_SUCCESS || numPhysicalDevices <= 0)
     {
         printVKWarning(tmpRes, "Unable to get Physical Device count"sv, true);
         return { /* return empty vector */ };
@@ -31,7 +30,7 @@ std::vector<VkPhysicalDevice> collectPhysicalDevices(VkInstance pVKInstT)
         VK_NULL_HANDLE
     };
 
-    if (VkResult tmpRes{ vkEnumeratePhysicalDevices(pVKInstT, &numPhysicalDevices, retval.data()) }; tmpRes != VK_SUCCESS)
+    if (VkResult tmpRes{ vkEnumeratePhysicalDevices(vkInst.m_VkHandle, &numPhysicalDevices, retval.data()) }; tmpRes != VK_SUCCESS)
     {
         printVKWarning(tmpRes, "Vulkan could not enumerate physical devices"sv, true);
         return { /* return empty vector */ };
@@ -42,7 +41,7 @@ std::vector<VkPhysicalDevice> collectPhysicalDevices(VkInstance pVKInstT)
     {
         VkPhysicalDeviceProperties DeviceProperties;
         vkGetPhysicalDeviceProperties(retval[i], &DeviceProperties);
-        if (DeviceProperties.apiVersion < graphicsHandler::apiVersion)
+        if (DeviceProperties.apiVersion < vulkanInstance::apiVersion)
         {
             retval.erase(retval.begin() + i);// remove by iter
             --i;// don't increment i on next loop since element removed
@@ -77,7 +76,7 @@ std::vector<VkPhysicalDevice> collectPhysicalDevices(VkInstance pVKInstT)
     return retval;
 }
 
-bool vulkanDevice::createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties, bool validationLayersOn)
+bool vulkanDevice::createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties)
 {
     for (uint32_t i{ 0 }, t{ static_cast<uint32_t>(DeviceProperties.size()) }; i < t; ++i)
     {
@@ -139,15 +138,14 @@ bool vulkanDevice::createGraphicsDevice(std::vector<VkQueueFamilyProperties> con
     };
 
     std::vector<const char*> ValidationLayers;
-    if (validationLayersOn)
+    if (m_pVKInst->isDebugValidationOn())
     {
         ValidationLayers = getValidationLayers();
         deviceCreateInfo.enabledLayerCount = static_cast<decltype(VkDeviceCreateInfo::enabledLayerCount)>(ValidationLayers.size());
         deviceCreateInfo.ppEnabledLayerNames = ValidationLayers.data();
     }
 
-    // nullptr allocator hardcoded here, "this is not meant as a performance feature" anyway
-    if (VkResult tmpRes{ vkCreateDevice(m_VKPhysicalDevice, &deviceCreateInfo, nullptr, &m_VKDevice) }; tmpRes != VK_SUCCESS)
+    if (VkResult tmpRes{ vkCreateDevice(m_VKPhysicalDevice, &deviceCreateInfo, m_pVKInst->m_pVKAllocator, &m_VKDevice) }; tmpRes != VK_SUCCESS)
     {
         printVKWarning(tmpRes, "Failed to create the Vulkan Graphical Device"sv);
         return false;
@@ -167,16 +165,42 @@ vulkanDevice::vulkanDevice() :
 
 }
 
-vulkanDevice::vulkanDevice(VkInstance pVKInstT, bool validationLayersOn) : 
-    vulkanDevice{}
+vulkanDevice::vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst) : 
+    m_pVKInst{ pVKInst },
+    isCreated{ 0 }
 {
-    createThisDevice(pVKInstT, validationLayersOn);
+    if (m_pVKInst && m_pVKInst->OK())
+    {
+        createThisDevice();
+    }
+    else
+    {
+        printWarning("Unable to create vulkanDevice when vulkanInstance is invalid"sv, true);
+    }
+    
 }
 
-bool vulkanDevice::createThisDevice(VkInstance pVKInstT, bool validationLayersOn)
+vulkanDevice::~vulkanDevice()
+{
+    vkDestroyDescriptorPool(m_VKDevice, m_VKDescriptorPool, m_pVKInst->m_pVKAllocator);
+    vkDestroyPipelineCache(m_VKDevice, m_VKPipelineCache, m_pVKInst->m_pVKAllocator);
+    vkDestroyDevice(m_VKDevice, m_pVKInst->m_pVKAllocator);
+}
+
+bool vulkanDevice::createThisDevice(std::shared_ptr<vulkanInstance>* optionalOverride)
 {
     if (isCreated)return true;
-    std::vector<VkPhysicalDevice> PhysicalDevices{ collectPhysicalDevices(pVKInstT) };
+    if (optionalOverride != nullptr && *optionalOverride && (*optionalOverride)->OK())
+    {
+        m_pVKInst = *optionalOverride;
+    }
+    if (!m_pVKInst->OK())
+    {
+        printWarning("Attempting to create device with bad vulkanInstance"sv, true);
+        return false;
+    }
+
+    std::vector<VkPhysicalDevice> PhysicalDevices{ collectPhysicalDevices(*m_pVKInst) };
     if (PhysicalDevices.empty())return false;// not OK! Where GPU
 
     // 
@@ -203,7 +227,7 @@ bool vulkanDevice::createThisDevice(VkInstance pVKInstT, bool validationLayersOn
             {
                 // officially confused
                 uint32_t QueueIndex{ static_cast<uint32_t>(&Prop - DeviceProps.data()) };
-                if (initialize(QueueIndex, PhysicalDevice, std::move(DeviceProps), validationLayersOn))
+                if (initialize(QueueIndex, PhysicalDevice, std::move(DeviceProps)))
                 {
                     isCreated = 1;
                     return true;
@@ -218,12 +242,12 @@ bool vulkanDevice::createThisDevice(VkInstance pVKInstT, bool validationLayersOn
     return false;
 }
 
-bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties, bool validationLayersOn)
+bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties)
 {
     m_VKPhysicalDevice  = PhysicalDevice;
     m_MainQueueIndex    = MainQueueIndex;
 
-    if (createGraphicsDevice(Properties, validationLayersOn) == false)
+    if (createGraphicsDevice(Properties) == false)
     {
         return false;// error already printed inside
     }
@@ -241,8 +265,8 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
     {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO
     };
-    // nullptr allocator hardcoded here, "this is not meant as a performance feature" anyway
-    if (VkResult tmpRes{ vkCreatePipelineCache(m_VKDevice, &pipelineCacheCreateInfo, nullptr, &m_VKPipelineCache) }; tmpRes != VK_SUCCESS)
+
+    if (VkResult tmpRes{ vkCreatePipelineCache(m_VKDevice, &pipelineCacheCreateInfo, m_pVKInst->m_pVKAllocator, &m_VKPipelineCache) }; tmpRes != VK_SUCCESS)
     {
         printVKWarning(tmpRes, "Failed to Create the pipeline cache"sv, true);
         return false;
@@ -276,7 +300,7 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
             .pPoolSizes     { PoolSizes.data() }
         };
 
-        if (VkResult tmpRes{ vkCreateDescriptorPool(m_VKDevice, &PoolCreateInfo, nullptr, &m_VKDescriptorPool)}; tmpRes != VK_SUCCESS)
+        if (VkResult tmpRes{ vkCreateDescriptorPool(m_VKDevice, &PoolCreateInfo, m_pVKInst->m_pVKAllocator, &m_VKDescriptorPool)}; tmpRes != VK_SUCCESS)
         {
             printVKWarning(tmpRes, "Failed to created a Descriptor Pool"sv, true);
             return false;

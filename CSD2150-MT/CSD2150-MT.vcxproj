@@ -161,6 +161,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
+    <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\handlers\graphicsHandler_vulkan.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="include\utility\windowsInclude.h" />
     <ClInclude Include="include\vulkanHelpers\printWarnings.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanDevice.h" />
+    <ClInclude Include="include\vulkanHelpers\vulkanInstance.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

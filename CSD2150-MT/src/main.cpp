@@ -25,8 +25,16 @@ int main()
 #endif//DEBUG || 
     //char* leak{ new char[69] };
 
-    graphicsHandler* pGH{ graphicsHandler::createInstance(true, true) };
-    if (pGH == nullptr || !pGH->VkInstanceOK())
+    graphicsHandler* pGH
+    {
+        graphicsHandler::createInstance
+        (
+            graphicsHandler::flagDebugPrint | 
+            graphicsHandler::flagDebugLayer | 
+            graphicsHandler::flagRenderDocLayer
+        )
+    };
+    if (pGH == nullptr || !pGH->OK())
     {
         printf_s("FAILED TO CREATE GRAPHICS HANDLER\n");
         destroyHandlers();
@@ -37,6 +45,7 @@ int main()
     if (pWH == nullptr)
     {
         printf_s("FAILED TO CREATE WINDOW HANDLER\n");
+        destroyHandlers();
         return -1;
     }
 

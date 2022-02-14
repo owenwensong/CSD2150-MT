@@ -10,21 +10,21 @@
 #ifndef GRAPHICS_HANDLER_VULKAN_HEADER
 #define GRAPHICS_HANDLER_VULKAN_HEADER
 
+#include <memory>   // std::shared_ptr
 #include <utility/Singleton.h>
-#include <vulkanHelpers/vulkanDevice.h>// contains vulkan.h
+#include <vulkanHelpers/vulkanInstance.h>
+#include <vulkanHelpers/vulkanDevice.h>
 #include <vector>
 
 class graphicsHandler : public Singleton<graphicsHandler>
 {
 public:
 
-    static constexpr decltype(VkApplicationInfo::apiVersion) apiVersion{ VK_API_VERSION_1_2 };
+    static constexpr size_t flagDebugPrint      { 0b0001 };
+    static constexpr size_t flagDebugLayer      { 0b0010 };
+    static constexpr size_t flagRenderDocLayer  { 0b0100 };
 
-    static VkInstance createVkInstance(bool enableDebugLayers, bool enableRenderDoc);
-
-    bool VkInstanceOK() const noexcept;
-
-    bool isDebugValidationOn() const noexcept;
+    bool OK() const noexcept;
 
     ~graphicsHandler();
 private:
@@ -33,17 +33,15 @@ private:
     graphicsHandler(graphicsHandler const&) = delete;
 private:
 
-    graphicsHandler(bool enableDebugLayers, bool enableRenderDoc);
+    graphicsHandler(size_t flagOptions);
 
-    VkInstance m_VkHandle;
-    vulkanDevice m_VKDevice;
+    std::shared_ptr<vulkanInstance> m_pVKInst;  // shared so stuff can depend on it
+    std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst itself
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 
-    bitfield bValidation : 1;
+    bitfield bDebugPrint : 1;   // does not affect error/warning printouts
 
 };
-
-std::vector<const char*> getValidationLayers();// becoming spaghetti
 
 #endif//GRAPHICS_HANDLER_VULKAN_HEADER
