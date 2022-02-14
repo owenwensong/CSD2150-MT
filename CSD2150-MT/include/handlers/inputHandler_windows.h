@@ -56,9 +56,20 @@ namespace inputHandler
     /// @return true if something was released
     bool anyReleased() noexcept;
 
+    /// @brief get the number of full scrolls
+    /// @return how many multiples of WHEEL_DELTA the scroll wheel has travelled
+    int getScrollSteps() noexcept;
 
-    /// @brief debug print only covers mouse1 - mouse5, A - Z, 0 - 9
-    /// @param flagRTP 0x001 Triggered 0x010 Pressed 0x100 Released
+    /// @brief get the the number of scroll steps with any extra partial steps
+    /// @return how many multiples of WHEEL_DELTA the scroll wheel has travelled
+    float getScrollFine() noexcept;
+
+
+    /// @brief debug print (most keys, not all)
+    /// @param flagRTP 0b0001 Triggered, 
+    ///                0b0010 Pressed, 
+    ///                0b0100 Released,
+    ///                0b1000 CursorPos
     void debugPrint(size_t flagRPT) noexcept;
 
     /// @brief set virtual key trigger state to true.
@@ -70,6 +81,16 @@ namespace inputHandler
     ///        making assumption that 0xFF is num VK keys
     /// @param vkCode code to set release to true
     void setVKRelease(keyIdx_T vkCode) noexcept;
+
+    /// @brief Add scroll amount to accumulate.
+    ///        The amount added is usually in multiples of WHEEL_DELTA
+    /// @param scrollAmt scroll distance, +ve is forwards, -ve is backwards
+    void addMouseScroll(short scrollAmt) noexcept;
+
+    /// @brief update the cursor position from windows message
+    /// @param cX X position relative to upper-left corner of the client area
+    /// @param cY Y position relative to upper-left corner of the client area
+    void updateCursorPos(int cX, int cY) noexcept;
 
 }
 

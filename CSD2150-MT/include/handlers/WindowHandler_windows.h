@@ -21,6 +21,8 @@ public:
 
     HWND getWindowHandle() const noexcept;
 
+    ~windowHandler();
+
 private:
     friend class Singleton;
     windowHandler& operator=(windowHandler const&) = delete;
@@ -34,7 +36,7 @@ private:
 
     HWND m_pWindowHandle;
 
-    using bitfield = size_t;
+    using bitfield = intptr_t;  // bitfield size match ptr size
 
 };
 

@@ -22,6 +22,12 @@
     <Filter Include="Source Files\handlers">
       <UniqueIdentifier>{81273240-7e01-4b35-a8a8-7ab0bb018865}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\vulkanHelpers">
+      <UniqueIdentifier>{f23510b4-e2a7-431d-9d8c-056ccb39cb3e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vulkanHelpers">
+      <UniqueIdentifier>{ef45555d-e6c0-4d40-bc34-7e21d69c2e35}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -32,6 +38,15 @@
     </ClCompile>
     <ClCompile Include="src\handlers\WindowHandler_windows.cpp">
       <Filter>Source Files\handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\handlers\graphicsHandler_vulkan.cpp">
+      <Filter>Source Files\handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\printWarnings.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -49,6 +64,15 @@
     </ClInclude>
     <ClInclude Include="include\utility\windowsInclude.h">
       <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\handlers\graphicsHandler_vulkan.h">
+      <Filter>Header Files\handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanDevice.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\printWarnings.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

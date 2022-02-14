@@ -61,6 +61,16 @@ LRESULT CALLBACK WHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) n
     case WM_KEYUP:
         inputHandler::setVKRelease(static_cast<inputHandler::keyIdx_T>(wParam));
         break;
+    case WM_MOUSEWHEEL: // No support for MOUSEHWHEEL right now
+        inputHandler::addMouseScroll(static_cast<short>(wParam >> 16 & 0xFFFF));
+        break;
+    case WM_MOUSEMOVE:
+        inputHandler::updateCursorPos
+        (
+            static_cast<int>(lParam & 0xFFFF),
+            static_cast<int>(lParam >> 16 & 0xFFFF)
+        );
+        break;
     case WM_SYSCOMMAND:
         if (SC_KEYMENU == wParam)return 0;// disable alt-space
         break;
@@ -74,6 +84,14 @@ windowHandler::windowHandler() :
     m_pWindowHandle{ nullptr }
 {
     printf_s("window class registration: %s\n", registerWindowClass() ? "successful" : "failed");
+}
+
+windowHandler::~windowHandler()
+{
+    if (m_pWindowHandle != nullptr)
+    {
+        DestroyWindow(m_pWindowHandle);
+    }
 }
 
 bool windowHandler::registerWindowClass() noexcept

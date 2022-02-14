@@ -155,16 +155,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\handlers\graphicsHandler_vulkan.cpp" />
     <ClCompile Include="src\handlers\inputHandler_windows.cpp" />
     <ClCompile Include="src\handlers\WindowHandler_windows.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
+    <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\handlers\graphicsHandler_vulkan.h" />
     <ClInclude Include="include\handlers\inputHandler_windows.h" />
     <ClInclude Include="include\handlers\WindowHandler_windows.h" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
     <ClInclude Include="include\utility\windowsInclude.h" />
+    <ClInclude Include="include\vulkanHelpers\printWarnings.h" />
+    <ClInclude Include="include\vulkanHelpers\vulkanDevice.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
