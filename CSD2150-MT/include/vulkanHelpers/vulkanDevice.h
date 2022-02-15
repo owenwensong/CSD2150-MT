@@ -22,15 +22,15 @@ public:
 
     bool createThisDevice(std::shared_ptr<vulkanInstance>* optionalOverride = nullptr);
 
-    // ????????????
-    bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties);
-    bool createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties);
-
     bool OK() const noexcept;
     vulkanDevice();
     vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst);
     ~vulkanDevice();
 
+private:
+    // ????????????
+    bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties);
+    bool createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties);
 private:
     
     std::shared_ptr<vulkanInstance>     m_pVKInst;
