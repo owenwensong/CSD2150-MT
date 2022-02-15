@@ -9,12 +9,10 @@
 
 #include <memory>
 #include <handlers/graphicsHandler_vulkan.h>
-#include <handlers/WindowHandler_windows.h>
-#include <handlers/inputHandler_windows.h>
 
 void destroyHandlers()
 {
-    windowHandler::destroyInstance();
+    //windowHandler::destroyInstance();
     graphicsHandler::destroyInstance();
 }
 
@@ -42,31 +40,9 @@ int main()
         return -3;
     }
 
-    windowHandler* pWH{ windowHandler::createInstance() };
-    if (pWH == nullptr)
+    while (pGH->processInputEvents())
     {
-        printf_s("FAILED TO CREATE WINDOW HANDLER\n");
-        return -1;
-    }
-
-    if (pWH->createWindow(1280, 720, false) == false)
-    {
-        printf_s("FAILED TO CREATE WINDOW\n");
-        return -2;
-    }
-
-    inputHandler::initialize();
-
-    for (bool bLoop{ true }; bLoop;)
-    {
-        for (MSG msg; PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE); DispatchMessage(&msg))
-        {
-            if (msg.message == WM_QUIT)bLoop = false;
-        }
-        // loop here?
-        inputHandler::update();
-        inputHandler::debugPrint(0b0101);
-        if (inputHandler::isTriggered(VK_ESCAPE))bLoop = false;
+        // do nothing lmao TMP TMP TMP
     }
 
     return 0;

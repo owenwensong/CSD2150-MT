@@ -319,3 +319,7 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
     return true;
 }
 
+std::shared_ptr<vulkanInstance>& vulkanDevice::getVKInst()
+{
+    return m_pVKInst;
+}

@@ -24,8 +24,20 @@ graphicsHandler::graphicsHandler(size_t flagOptions) :
 				)
 		},
 		m_pVKDevice{ std::make_shared<vulkanDevice>(m_pVKInst) },
+		m_pVKWindow
+		{
+				std::make_unique<vulkanWindow>()
+		},
 		bDebugPrint{ flagOptions & flagDebugPrint ? true : false }
 {
+		if (m_pVKWindow && m_pVKWindow->Initialize(m_pVKDevice, { /* default */ }))
+		{
+				std::cout << "window OK, tmp printout!" << std::endl;
+		}
+		else
+		{
+				printWarning("FAILED TO CREATE WINDOW"sv, true);
+		}
 		if (bDebugPrint)
 		{
 				std::cout << "graphicsHandler instance created! \nvulkanInstance status: "sv
@@ -56,3 +68,19 @@ bool graphicsHandler::OK() const noexcept
 
 
 // *****************************************************************************
+
+bool graphicsHandler::processInputEvents()
+{
+		bool bContinue{ true };
+		for (MSG msg; PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE); DispatchMessage(&msg))
+		{
+				if (msg.message == WM_QUIT)
+				{
+						bContinue = false;
+						break;
+				}
+		}
+		m_pVKWindow->m_windowsWindow.m_windowInputs.update();
+		m_pVKWindow->m_windowsWindow.m_windowInputs.debugPrint(0b0101);//TMP
+		return bContinue;
+}

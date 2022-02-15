@@ -28,16 +28,16 @@
     <Filter Include="Source Files\vulkanHelpers">
       <UniqueIdentifier>{ef45555d-e6c0-4d40-bc34-7e21d69c2e35}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\windowsHelpers">
+      <UniqueIdentifier>{b96ddf03-67bf-4b94-b6bc-b991ae5a5fd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\windowsHelpers">
+      <UniqueIdentifier>{c12907a2-f5f3-4c9e-86ff-1480c92c07e4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\handlers\inputHandler_windows.cpp">
-      <Filter>Source Files\handlers</Filter>
-    </ClCompile>
-    <ClCompile Include="src\handlers\WindowHandler_windows.cpp">
-      <Filter>Source Files\handlers</Filter>
     </ClCompile>
     <ClCompile Include="src\handlers\graphicsHandler_vulkan.cpp">
       <Filter>Source Files\handlers</Filter>
@@ -51,6 +51,15 @@
     <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp">
       <Filter>Source Files\vulkanHelpers</Filter>
     </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\vulkanWindow.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\windowsHelpers\windowsWindow.cpp">
+      <Filter>Source Files\windowsHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\windowsHelpers\windowsInput.cpp">
+      <Filter>Source Files\windowsHelpers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\utility\Singleton.h">
@@ -58,12 +67,6 @@
     </ClInclude>
     <ClInclude Include="include\utility\Singleton.hpp">
       <Filter>Header Files\utility</Filter>
-    </ClInclude>
-    <ClInclude Include="include\handlers\WindowHandler_windows.h">
-      <Filter>Header Files\handlers</Filter>
-    </ClInclude>
-    <ClInclude Include="include\handlers\inputHandler_windows.h">
-      <Filter>Header Files\handlers</Filter>
     </ClInclude>
     <ClInclude Include="include\utility\windowsInclude.h">
       <Filter>Header Files\utility</Filter>
@@ -82,6 +85,15 @@
     </ClInclude>
     <ClInclude Include="include\utility\lockableObject.hpp">
       <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanWindow.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\windowsHelpers\windowsWindow.h">
+      <Filter>Header Files\windowsHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\windowsHelpers\windowsInput.h">
+      <Filter>Header Files\windowsHelpers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

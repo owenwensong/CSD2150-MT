@@ -27,6 +27,8 @@ public:
     vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst);
     ~vulkanDevice();
 
+    std::shared_ptr<vulkanInstance>& getVKInst();
+
 private:
     // ????????????
     bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties);

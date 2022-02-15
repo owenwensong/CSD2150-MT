@@ -14,6 +14,7 @@
 #include <utility/Singleton.h>
 #include <vulkanHelpers/vulkanInstance.h>
 #include <vulkanHelpers/vulkanDevice.h>
+#include <vulkanHelpers/vulkanWindow.h>
 #include <vector>
 
 class graphicsHandler : public Singleton<graphicsHandler>
@@ -27,6 +28,9 @@ public:
     bool OK() const noexcept;
 
     ~graphicsHandler();
+
+    bool processInputEvents();// rename everything? TMP TMP TMP TMP TMP
+
 private:
     friend class Singleton;
     graphicsHandler& operator=(graphicsHandler const&) = delete;
@@ -36,7 +40,8 @@ private:
     graphicsHandler(size_t flagOptions);
 
     std::shared_ptr<vulkanInstance> m_pVKInst;  // shared so stuff can depend on it
-    std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst itself
+    std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst
+    std::unique_ptr<vulkanWindow> m_pVKWindow;  // has a copy of m_pVKDevice
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 

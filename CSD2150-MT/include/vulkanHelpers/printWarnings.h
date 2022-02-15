@@ -7,6 +7,9 @@
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
+#ifndef VULKAN_HELPERS_PRINT_WARNINGS_HEADER
+#define VULKAN_HELPERS_PRINT_WARNINGS_HEADER
+
 #include <vulkan/vulkan.h>
 #include <source_location>  // for error/warning reporting
 #include <string>           // for std::string_view
@@ -18,3 +21,5 @@ using namespace std::string_view_literals;	// for literal operator sv
 std::string_view VKErrorToString(VkResult errCode) noexcept;
 void printVKWarning(VkResult errCode, std::string_view msg, bool isError = false, std::source_location const& errLoc = std::source_location::current()) noexcept;
 void printWarning(std::string_view msg, bool isError = false, std::source_location const& errLoc = std::source_location::current()) noexcept;
+
+#endif//VULKAN_HELPERS_PRINT_WARNINGS_HEADER

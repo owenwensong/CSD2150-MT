@@ -2,31 +2,33 @@
  * @file    inputHandler_windows.h
  * @author  Owen Huang Wensong  (w.huang@digipen.edu)
  * @date    10 FEB 2022
- * @brief   This is the interface for the inputHandler
- * 
+ * @brief   This is the interface of the windows Input handler
+ *
  *          modified version of my previously authored simpleInput system...
- *          simple input 2.0?
+ *          simple input 2.1?
  *
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
-#ifndef INPUT_HANDLER_WINDOWS_HEADER
-#define INPUT_HANDLER_WINDOWS_HEADER
+#ifndef WINDOWS_INPUT_HELPER_HEADER
+#define WINDOWS_INPUT_HELPER_HEADER
 
-#include <stdint.h> // for uint8_t
 #include <utility/windowsInclude.h>
+#include <bitset>
 
-namespace inputHandler
+class windowsInput
 {
+public:
 
     using keyIdx_T = uint8_t;// making assumption that 0xFF is num VK keys
+
+    windowsInput();
 
     /// @brief reset the input system, zeroing out all keystates
     void initialize() noexcept;
 
     /// @brief update the input system, setting the current frame keystates
     void update() noexcept;
-
 
     /// @brief check if a certain key was triggered this frame
     /// @param vkCode virtual key code to check
@@ -92,7 +94,36 @@ namespace inputHandler
     /// @param cY Y position relative to upper-left corner of the client area
     void updateCursorPos(int cX, int cY) noexcept;
 
-}
+private:
+
+    // various unused/reserved/niche keys but whatever
+    static constexpr size_t NUM_VK_KEYS{ 0xFF };
+
+    using KSContainer = std::bitset<NUM_VK_KEYS>;   // Key State Container
+
+    KSContainer keystatesTriggeredA; // 1 for triggered
+    KSContainer keystatesTriggeredB; // 0 otherwise
+    KSContainer keystatesPressed;
+    KSContainer keystatesReleasedA;  // 0 for released
+    KSContainer keystatesReleasedB;  // 1 otherwise
+
+    KSContainer* pTriggeredAccumulate{ &keystatesTriggeredA };
+    KSContainer* pTriggeredCurrent{ &keystatesTriggeredB };
+    KSContainer* pReleasedAccumulate{ &keystatesReleasedA };
+    KSContainer* pReleasedCurrent{ &keystatesReleasedB };
+
+    int scrollAmountA;
+    int scrollAmountB;
+
+    int* pScrollAccumulate{ &scrollAmountA };
+    int* pScrollCurrent{ &scrollAmountB };
+
+    int cursorXAccumulate;
+    int cursorYAccumulate;
+    int cursorXCurrent;
+    int cursorYCurrent;
+
+};
 
 // define more VKs to keep calling convention the same (VK prefix)
 
@@ -102,7 +133,7 @@ namespace inputHandler
  * VK_A - VK_Z are the same as ASCII 'A' - 'Z' (0x41 - 0x5A)
  */
 
-// assume VK_0 to VK_9 are not defined if VK_0 is not
+ // assume VK_0 to VK_9 are not defined if VK_0 is not
 #ifndef VK_0
 #define VK_0 0x30
 #define VK_1 0x31
@@ -146,5 +177,4 @@ namespace inputHandler
 #define VK_Z 0x5A
 #endif // !VK_A
 
-
-#endif // !INPUT_HANDLER_HEADER
+#endif//WINDOWS_INPUT_HELPER_HEADER
