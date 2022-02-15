@@ -25,6 +25,8 @@ int main()
 #endif//DEBUG || 
     //char* leak{ new char[69] };
 
+    std::atexit(destroyHandlers);// destroy handlers for any exit
+
     graphicsHandler* pGH
     {
         graphicsHandler::createInstance
@@ -37,7 +39,6 @@ int main()
     if (pGH == nullptr || !pGH->OK())
     {
         printf_s("FAILED TO CREATE GRAPHICS HANDLER\n");
-        destroyHandlers();
         return -3;
     }
 
@@ -45,14 +46,12 @@ int main()
     if (pWH == nullptr)
     {
         printf_s("FAILED TO CREATE WINDOW HANDLER\n");
-        destroyHandlers();
         return -1;
     }
 
     if (pWH->createWindow(1280, 720, false) == false)
     {
         printf_s("FAILED TO CREATE WINDOW\n");
-        destroyHandlers();
         return -2;
     }
 
@@ -69,8 +68,6 @@ int main()
         inputHandler::debugPrint(0b0101);
         if (inputHandler::isTriggered(VK_ESCAPE))bLoop = false;
     }
-
-    destroyHandlers();
 
     return 0;
 

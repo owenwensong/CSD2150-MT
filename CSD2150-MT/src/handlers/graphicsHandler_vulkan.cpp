@@ -28,7 +28,7 @@ graphicsHandler::graphicsHandler(size_t flagOptions) :
 {
 		if (bDebugPrint)
 		{
-				std::cout << "graphicsHandler instance created! \nVkInstance status: "sv
+				std::cout << "graphicsHandler instance created! \nvulkanInstance status: "sv
 									<< (m_pVKInst && m_pVKInst->OK() ? "OK"sv : "BAD"sv)
 									<< "\nvulkanDevice status: "sv
 									<< (m_pVKDevice && m_pVKDevice->OK() ? "OK"sv : "BAD"sv)
