@@ -167,6 +167,7 @@
     <ClInclude Include="include\handlers\graphicsHandler_vulkan.h" />
     <ClInclude Include="include\handlers\inputHandler_windows.h" />
     <ClInclude Include="include\handlers\WindowHandler_windows.h" />
+    <ClInclude Include="include\utility\lockableObject.hpp" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
     <ClInclude Include="include\utility\windowsInclude.h" />

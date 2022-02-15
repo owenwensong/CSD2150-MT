@@ -182,7 +182,8 @@ vulkanDevice::vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst) :
 
 vulkanDevice::~vulkanDevice()
 {
-    vkDestroyDescriptorPool(m_VKDevice, m_VKDescriptorPool, m_pVKInst->m_pVKAllocator);
+    std::scoped_lock Lk{ m_LockedVKDescriptorPool };// lock it and let it die
+    vkDestroyDescriptorPool(m_VKDevice, m_LockedVKDescriptorPool.get(), m_pVKInst->m_pVKAllocator);
     vkDestroyPipelineCache(m_VKDevice, m_VKPipelineCache, m_pVKInst->m_pVKAllocator);
     vkDestroyDevice(m_VKDevice, m_pVKInst->m_pVKAllocator);
 }
@@ -253,8 +254,12 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
     }
 
     // Get all the queues (NO MUTEX INTEGRATION, WILL I NEED IT??????)
-    vkGetDeviceQueue(m_VKDevice, m_MainQueueIndex, 0, &m_VKMainQueue);
-    vkGetDeviceQueue(m_VKDevice, m_TransferQueueIndex, 0, &m_VKTransferQueue);
+    {
+        std::scoped_lock Lks{ m_VKMainQueue, m_VKTransferQueue };
+        vkGetDeviceQueue(m_VKDevice, m_MainQueueIndex, 0, &m_VKMainQueue.get());
+        vkGetDeviceQueue(m_VKDevice, m_TransferQueueIndex, 0, &m_VKTransferQueue.get());
+    }
+    
 
     // Gather physical device memory properties
     vkGetPhysicalDeviceMemoryProperties(m_VKPhysicalDevice, &m_VKDeviceMemoryProperties);
@@ -300,10 +305,13 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
             .pPoolSizes     { PoolSizes.data() }
         };
 
-        if (VkResult tmpRes{ vkCreateDescriptorPool(m_VKDevice, &PoolCreateInfo, m_pVKInst->m_pVKAllocator, &m_VKDescriptorPool)}; tmpRes != VK_SUCCESS)
-        {
-            printVKWarning(tmpRes, "Failed to created a Descriptor Pool"sv, true);
-            return false;
+        {   // from what I checked, scoped_lock is a superior lock_guard so I will use it instead even for single object locking
+            std::scoped_lock Lk{ m_LockedVKDescriptorPool };
+            if (VkResult tmpRes{ vkCreateDescriptorPool(m_VKDevice, &PoolCreateInfo, m_pVKInst->m_pVKAllocator, &m_LockedVKDescriptorPool.get())}; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Failed to created a Descriptor Pool"sv, true);
+                return false;
+            }
         }
 
     }

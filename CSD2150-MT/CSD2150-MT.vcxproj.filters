@@ -80,5 +80,8 @@
     <ClInclude Include="include\vulkanHelpers\vulkanInstance.h">
       <Filter>Header Files\vulkanHelpers</Filter>
     </ClInclude>
+    <ClInclude Include="include\utility\lockableObject.hpp">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@
 
 #include <vulkanHelpers/vulkanInstance.h>
 #include <vulkan/vulkan.h>
+#include <utility/lockableObject.hpp>
 #include <memory>
 #include <vector>
 
@@ -32,18 +33,18 @@ public:
 
 private:
     
-    std::shared_ptr<vulkanInstance> m_pVKInst;
-    VkPhysicalDevice m_VKPhysicalDevice{};
-    VkDevice m_VKDevice{};
-    uint32_t m_MainQueueIndex{};
-    uint32_t m_TransferQueueIndex{};
-    VkQueue m_VKMainQueue{};// try without lock ???
-    VkQueue m_VKTransferQueue{};// only 1 thread can submit queue at a time?
-    VkPhysicalDeviceMemoryProperties m_VKDeviceMemoryProperties{};
-    VkPipelineCache m_VKPipelineCache{};// if this is ?? for you what is it to me
-    VkDeviceSize m_BufferMemoryAlignment{ 256 };
-    VkPhysicalDeviceProperties m_VKPhysicalDeviceProperties{};
-    VkDescriptorPool m_VKDescriptorPool{};// try without lock
+    std::shared_ptr<vulkanInstance>     m_pVKInst;
+    VkPhysicalDevice                    m_VKPhysicalDevice{};
+    VkDevice                            m_VKDevice{};
+    uint32_t                            m_MainQueueIndex{};
+    uint32_t                            m_TransferQueueIndex{};
+    lockableObject<VkQueue>             m_VKMainQueue{};
+    lockableObject<VkQueue>             m_VKTransferQueue{};
+    VkPhysicalDeviceMemoryProperties    m_VKDeviceMemoryProperties{};
+    VkPipelineCache                     m_VKPipelineCache{};    // ??
+    VkDeviceSize                        m_BufferMemoryAlignment{ 256 };
+    VkPhysicalDeviceProperties          m_VKPhysicalDeviceProperties{};
+    lockableObject<VkDescriptorPool>    m_LockedVKDescriptorPool{};
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 
