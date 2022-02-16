@@ -17,7 +17,7 @@
 #include <vulkanHelpers/vulkanWindow.h>
 #include <vector>
 
-class graphicsHandler : public Singleton<graphicsHandler>
+class windowHandler : public Singleton<windowHandler>
 {
 public:
 
@@ -27,21 +27,26 @@ public:
 
     bool OK() const noexcept;
 
-    ~graphicsHandler();
+    ~windowHandler();
 
-    bool processInputEvents();// rename everything? TMP TMP TMP TMP TMP
+    /// @brief process windows messages, you will need to update individual 
+    ///        window input updates
+    /// @return whether or not the loop should continue
+    bool processInputEvents();
+
+    [[nodiscard("Don't throw away my window man")]]
+    std::unique_ptr<vulkanWindow> createWindow(windowSetup const& Setup);
 
 private:
     friend class Singleton;
-    graphicsHandler& operator=(graphicsHandler const&) = delete;
-    graphicsHandler(graphicsHandler const&) = delete;
+    windowHandler& operator=(windowHandler const&) = delete;
+    windowHandler(windowHandler const&) = delete;
 private:
 
-    graphicsHandler(size_t flagOptions);
+    windowHandler(size_t flagOptions);
 
     std::shared_ptr<vulkanInstance> m_pVKInst;  // shared so stuff can depend on it
     std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst
-    std::unique_ptr<vulkanWindow> m_pVKWindow;  // has a copy of m_pVKDevice
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 

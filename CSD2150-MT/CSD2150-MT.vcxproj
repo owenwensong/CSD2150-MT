@@ -155,7 +155,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\handlers\graphicsHandler_vulkan.cpp" />
+    <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
@@ -165,7 +165,7 @@
     <ClCompile Include="src\windowsHelpers\windowsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\handlers\graphicsHandler_vulkan.h" />
+    <ClInclude Include="include\handlers\windowHandler.h" />
     <ClInclude Include="include\utility\lockableObject.hpp" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />

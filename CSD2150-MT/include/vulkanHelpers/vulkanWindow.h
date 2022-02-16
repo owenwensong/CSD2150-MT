@@ -37,6 +37,12 @@ class vulkanWindow
 {
 public:
 
+    vulkanWindow() = default;
+    vulkanWindow(std::shared_ptr<vulkanDevice>& Device,
+                 windowSetup const& Setup);
+
+    bool OK() const noexcept;
+
     bool Initialize(std::shared_ptr<vulkanDevice>& Device, 
                     windowSetup const& Setup);
 
@@ -69,8 +75,9 @@ public: // all public, let whoever touch it /shrug
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 
-    bitfield                            m_bfClearOnRender : 1 { 0 };
-    bitfield                            m_bfRebuildSwapChain : 1 { 0 };
+    bitfield                            m_bfClearOnRender : 1   { 0 };
+    bitfield                            m_bfRebuildSwapChain : 1{ 0 };
+    bitfield                            m_bfInitializeOK : 1    { 0 };
 
 };
 

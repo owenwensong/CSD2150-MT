@@ -8,12 +8,11 @@
 *******************************************************************************/
 
 #include <memory>
-#include <handlers/graphicsHandler_vulkan.h>
+#include <handlers/windowHandler.h>
 
 void destroyHandlers()
 {
-    //windowHandler::destroyInstance();
-    graphicsHandler::destroyInstance();
+    windowHandler::destroyInstance();
 }
 
 int main()
@@ -25,24 +24,29 @@ int main()
 
     std::atexit(destroyHandlers);// destroy handlers for any exit
 
-    graphicsHandler* pGH
+    windowHandler* pWH
     {
-        graphicsHandler::createInstance
+        windowHandler::createInstance
         (
-            graphicsHandler::flagDebugPrint | 
-            graphicsHandler::flagDebugLayer | 
-            graphicsHandler::flagRenderDocLayer
+            windowHandler::flagDebugPrint |
+            windowHandler::flagDebugLayer |
+            windowHandler::flagRenderDocLayer
         )
     };
-    if (pGH == nullptr || !pGH->OK())
+    if (pWH == nullptr || !pWH->OK())
     {
-        printf_s("FAILED TO CREATE GRAPHICS HANDLER\n");
+        printf_s("FAILED TO CREATE WINDOW HANDLER\n");
         return -3;
     }
 
-    while (pGH->processInputEvents())
+    if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_Title{L"TestWindow"sv}}) }; upVKWin && upVKWin->OK())
     {
-        // do nothing lmao TMP TMP TMP
+        windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
+        while (pWH->processInputEvents())
+        {
+            win0Input.update();
+            win0Input.debugPrint(0b0101);
+        }
     }
 
     return 0;

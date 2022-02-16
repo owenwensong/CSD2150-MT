@@ -39,7 +39,7 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\handlers\graphicsHandler_vulkan.cpp">
+    <ClCompile Include="src\handlers\windowHandler.cpp">
       <Filter>Source Files\handlers</Filter>
     </ClCompile>
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp">
@@ -71,7 +71,7 @@
     <ClInclude Include="include\utility\windowsInclude.h">
       <Filter>Header Files\utility</Filter>
     </ClInclude>
-    <ClInclude Include="include\handlers\graphicsHandler_vulkan.h">
+    <ClInclude Include="include\handlers\windowHandler.h">
       <Filter>Header Files\handlers</Filter>
     </ClInclude>
     <ClInclude Include="include\vulkanHelpers\vulkanDevice.h">

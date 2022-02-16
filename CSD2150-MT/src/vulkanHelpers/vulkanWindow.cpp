@@ -8,6 +8,22 @@
 *******************************************************************************/
 
 #include <vulkanHelpers/vulkanWindow.h>
+#include <iostream> // for wcout
+
+vulkanWindow::vulkanWindow(std::shared_ptr<vulkanDevice>& Device,
+                           windowSetup const& Setup)
+{   // not using initializer list because idk if it will be compatible in the future
+    Initialize(Device, Setup);
+    std::wcout << Setup.m_Title
+               << L" | Window creation status: "sv
+               << (m_bfInitializeOK ? L"OK"sv : L"BAD"sv)
+               << std::endl;
+}
+
+bool vulkanWindow::OK() const noexcept
+{
+    return m_bfInitializeOK ? true : false;
+}
 
 bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device, 
                               windowSetup const& Setup)
@@ -41,6 +57,7 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
     }
 
     // Create surface and stuff, returning now just to test
+    m_bfInitializeOK = 1;
     return true;
 
 }

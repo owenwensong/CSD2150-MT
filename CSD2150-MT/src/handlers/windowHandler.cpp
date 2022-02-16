@@ -7,14 +7,14 @@
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
-#include <handlers/graphicsHandler_vulkan.h>
 #include <vulkanHelpers/printWarnings.h>
+#include <handlers/windowHandler.h>
 #include <iostream>
 
 
-// ************************************************* GRAPHICS HANDLER CLASS ****
+// *************************************************** WINDOW HANDLER CLASS ****
 
-graphicsHandler::graphicsHandler(size_t flagOptions) :
+windowHandler::windowHandler(size_t flagOptions) :
 		m_pVKInst
 		{
 				std::make_shared<vulkanInstance>
@@ -24,20 +24,8 @@ graphicsHandler::graphicsHandler(size_t flagOptions) :
 				)
 		},
 		m_pVKDevice{ std::make_shared<vulkanDevice>(m_pVKInst) },
-		m_pVKWindow
-		{
-				std::make_unique<vulkanWindow>()
-		},
 		bDebugPrint{ flagOptions & flagDebugPrint ? true : false }
 {
-		if (m_pVKWindow && m_pVKWindow->Initialize(m_pVKDevice, { /* default */ }))
-		{
-				std::cout << "window OK, tmp printout!" << std::endl;
-		}
-		else
-		{
-				printWarning("FAILED TO CREATE WINDOW"sv, true);
-		}
 		if (bDebugPrint)
 		{
 				std::cout << "graphicsHandler instance created! \nvulkanInstance status: "sv
@@ -49,7 +37,7 @@ graphicsHandler::graphicsHandler(size_t flagOptions) :
 
 }
 
-graphicsHandler::~graphicsHandler()
+windowHandler::~windowHandler()
 {
 		if (bDebugPrint)
 		{
@@ -57,7 +45,7 @@ graphicsHandler::~graphicsHandler()
 		}
 }
 
-bool graphicsHandler::OK() const noexcept
+bool windowHandler::OK() const noexcept
 {
 		return
 		{
@@ -66,21 +54,18 @@ bool graphicsHandler::OK() const noexcept
 		};
 }
 
-
-// *****************************************************************************
-
-bool graphicsHandler::processInputEvents()
+bool windowHandler::processInputEvents()
 {
-		bool bContinue{ true };
 		for (MSG msg; PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE); DispatchMessage(&msg))
 		{
-				if (msg.message == WM_QUIT)
-				{
-						bContinue = false;
-						break;
-				}
+				if (msg.message == WM_QUIT)return false;
 		}
-		m_pVKWindow->m_windowsWindow.m_windowInputs.update();
-		m_pVKWindow->m_windowsWindow.m_windowInputs.debugPrint(0b0101);//TMP
-		return bContinue;
+		return true;
 }
+
+std::unique_ptr<vulkanWindow> windowHandler::createWindow(windowSetup const& Setup)
+{
+		return std::make_unique<vulkanWindow>(m_pVKDevice, Setup);
+}
+
+// *****************************************************************************
