@@ -33,7 +33,7 @@ private:
     // ????????????
     bool initialize(uint32_t MainQueueIndex, VkPhysicalDevice PhysicalDevice, std::vector<VkQueueFamilyProperties> Properties);
     bool createGraphicsDevice(std::vector<VkQueueFamilyProperties> const& DeviceProperties);
-private:
+public: // just realease it... I don't know why everything must touch each other
     
     std::shared_ptr<vulkanInstance>     m_pVKInst;
     VkPhysicalDevice                    m_VKPhysicalDevice{};

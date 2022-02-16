@@ -41,6 +41,8 @@ public:
     vulkanWindow(std::shared_ptr<vulkanDevice>& Device,
                  windowSetup const& Setup);
 
+    ~vulkanWindow();
+
     bool OK() const noexcept;
 
     bool Initialize(std::shared_ptr<vulkanDevice>& Device, 

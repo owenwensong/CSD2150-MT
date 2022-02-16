@@ -85,9 +85,9 @@ LRESULT CALLBACK WHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) n
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
-    case WM_CHAR:// needs translatemessage for this
-        printf_s("pressed: %c\n", static_cast<char>(wParam));
-        break;
+    //case WM_CHAR:// needs translatemessage for this
+    //    printf_s("pressed: %c\n", static_cast<char>(wParam));
+    //    break;
     case WM_LBUTTONDOWN:
         if (vulkanWindow* pVW{ reinterpret_cast<vulkanWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA)) }; pVW != nullptr)
         {
@@ -172,6 +172,12 @@ LRESULT CALLBACK WHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) n
     case WM_SYSCOMMAND:
         if (SC_KEYMENU == wParam)return 0;// disable alt-space
         break;
+    //case WM_SIZE:
+    //    printf_s("RESIZED!!!\n");
+    //    break;
+    //case WM_SIZING:
+    //    printf_s("RESIZING\n");
+    //    break;
     }
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
