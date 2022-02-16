@@ -27,6 +27,8 @@ public:
     vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst);
     ~vulkanDevice();
 
+    bool getMemoryType(uint32_t TypeBits, const VkFlags Properties, uint32_t& TypeIndex) const noexcept;
+
     std::shared_ptr<vulkanInstance>& getVKInst();
 
 private:

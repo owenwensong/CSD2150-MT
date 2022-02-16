@@ -106,6 +106,29 @@ VkPresentModeKHR SelectPresentMode(VkPhysicalDevice VKDevice,
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
+void MinimalDestroyFrame(VkDevice VKDevice, vulkanFrame& Frame, VkAllocationCallbacks const* pAllocator) noexcept
+{
+    vkDestroyFence(VKDevice, Frame.m_VKFence, pAllocator);
+    vkFreeCommandBuffers(VKDevice, Frame.m_VKCommandPool, 1, &Frame.m_VKCommandBuffer);
+    vkDestroyCommandPool(VKDevice, Frame.m_VKCommandPool, pAllocator);
+
+    Frame.m_VKFence         = VK_NULL_HANDLE;
+    Frame.m_VKCommandBuffer = VK_NULL_HANDLE;
+    Frame.m_VKCommandPool   = VK_NULL_HANDLE;
+
+    vkDestroyImageView(VKDevice, Frame.m_VKBackBufferView, pAllocator);
+    vkDestroyFramebuffer(VKDevice, Frame.m_VKFramebuffer, pAllocator);
+}
+
+void MinimalDestroyFrameSemaphores(VkDevice VKDevice, vulkanFrameSem& FrameSemaphores, VkAllocationCallbacks const* pAllocator) noexcept
+{
+    vkDestroySemaphore(VKDevice, FrameSemaphores.m_VKImageAcquiredSemaphore, pAllocator);
+    vkDestroySemaphore(VKDevice, FrameSemaphores.m_VKRenderCompleteSemaphore, pAllocator);
+
+    FrameSemaphores.m_VKImageAcquiredSemaphore = VK_NULL_HANDLE;
+    FrameSemaphores.m_VKRenderCompleteSemaphore = VK_NULL_HANDLE;
+}
+
 // *****************************************************************************
 
 vulkanWindow::vulkanWindow(std::shared_ptr<vulkanDevice>& Device,
@@ -287,6 +310,227 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
 
     // Create surface and stuff, returning now just to test
     m_bfInitializeOK = 1;
+    return true;
+
+}
+
+bool vulkanWindow::CreateOrResizeWindow() noexcept
+{
+   return CreateWindowSwapChain();
+}
+
+bool vulkanWindow::CreateWindowSwapChain() noexcept
+{
+    // Preserve old swapchain to create the new one
+    VkSwapchainKHR const VKOldSwapChain{ m_VKSwapchain };
+    m_VKSwapchain = nullptr;
+
+    VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
+
+    if (VkResult tmpRes{ vkDeviceWaitIdle(m_Device->m_VKDevice)}; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Failed to wait for device", true);
+        // ???? Pretend there was no error ????
+    }
+    
+    // Destroy old Framebuffer
+    if (m_Frames.get())
+    {
+        for (uint32_t i{ 0 }, t{ m_ImageCount }; i < t; ++i)
+        {
+            MinimalDestroyFrame(m_Device->m_VKDevice, m_Frames[i], pAllocator);
+            MinimalDestroyFrameSemaphores(m_Device->m_VKDevice, m_FrameSemaphores[i], pAllocator);
+        }
+        m_Frames.release();         // I guess release instead of reset because
+        m_FrameSemaphores.release();// it is attached to VKOldSwapChain???
+
+        // Release the depth buffer (will exist if Framebuffer exists right?)
+        vkDestroyImageView(m_Device->m_VKDevice, m_VKDepthbufferView, pAllocator);
+        vkDestroyImage(m_Device->m_VKDevice, m_VKDepthbuffer, pAllocator);
+        vkFreeMemory(m_Device->m_VKDevice, m_VKDepthbufferMemory, pAllocator);
+        // leave the pointers invalid? Checks done on Framebuffer stuff anyway?
+    }
+
+    // Destroy render pass and pipeline
+    if (m_VKRenderPass)vkDestroyRenderPass(m_Device->m_VKDevice, m_VKRenderPass, pAllocator);
+    m_VKRenderPass = VK_NULL_HANDLE;
+
+    if (m_VKPipeline)vkDestroyPipeline(m_Device->m_VKDevice, m_VKPipeline, pAllocator);
+    m_VKPipeline = VK_NULL_HANDLE;
+
+    // Create the Swapchain
+    {
+        VkSwapchainCreateInfoKHR SwapChainInfo
+        {
+            .sType              { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR },
+            .pNext              { nullptr },
+            .flags              { 0 },
+            .surface            { m_VKSurface },
+            .minImageCount      { m_ImageCount },
+            .imageFormat        { m_VKSurfaceFormat.format },
+            .imageColorSpace    { m_VKSurfaceFormat.colorSpace },
+            .imageExtent
+            {
+                .width  { static_cast<decltype(VkExtent2D::width)>(m_windowsWindow.getWidth()) },
+                .height { static_cast<decltype(VkExtent2D::height)>(m_windowsWindow.getHeight()) }
+            },
+            .imageArrayLayers   { 1 },
+            .imageUsage         { VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT },
+            .imageSharingMode   { VK_SHARING_MODE_EXCLUSIVE },
+            .preTransform       { VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR },
+            .compositeAlpha     { VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR },
+            .presentMode        { m_VKPresentMode },
+            .clipped            { VK_TRUE },
+            .oldSwapchain       { VKOldSwapChain }  // reused here :^D
+        };
+
+        VkSurfaceCapabilitiesKHR SurfaceCapabilities{};
+        if (VkResult tmpRes{ vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_Device->m_VKPhysicalDevice, m_VKSurface, &SurfaceCapabilities) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "Failed to get the physical device surface capabilities"sv);
+            // pretend no error?
+        }
+        else
+        {
+            if (m_ImageCount == 0 || m_ImageCount < SurfaceCapabilities.minImageCount)
+            {
+                m_ImageCount = SurfaceCapabilities.minImageCount;
+            }
+            else if (m_ImageCount > SurfaceCapabilities.maxImageCount)
+            {
+                m_ImageCount = SurfaceCapabilities.maxImageCount;
+                printWarning("Reducing the number of usable buffers to render as device surface does not support as many as requested"sv);
+            }
+
+            if (SurfaceCapabilities.currentExtent.width != 0xFFFFFFFF)
+            {
+                SwapChainInfo.imageExtent.width = m_windowsWindow.m_Width = SurfaceCapabilities.currentExtent.width;
+                SwapChainInfo.imageExtent.height = m_windowsWindow.m_Height = SurfaceCapabilities.currentExtent.height;
+            }
+
+        }
+
+        
+        if (false == CreateDepthResources(SwapChainInfo.imageExtent))return false;
+
+        if (VkResult tmpRes{ vkCreateSwapchainKHR(m_Device->m_VKDevice, &SwapChainInfo, pAllocator, &m_VKSwapchain) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "Failed to create the Swap Chain"sv, true);
+            return false;
+        }
+
+        if (VkResult tmpRes{ vkGetSwapchainImagesKHR(m_Device->m_VKDevice, m_VKSwapchain, &m_ImageCount, NULL) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "Failed to get the Swap Chain Image Count"sv, true);
+            return false;
+        }
+
+        auto BackBuffers{ std::make_unique<VkImage[]>(m_ImageCount) };
+        if (VkResult tmpRes{ vkGetSwapchainImagesKHR(m_Device->m_VKDevice, m_VKSwapchain, &m_ImageCount, BackBuffers.get()) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "Failed to get the Swap Chain Images"sv, true);
+            return false;
+        }
+
+        assert(m_Frames.get() == nullptr);
+        m_Frames = std::make_unique<vulkanFrame[]>(m_ImageCount);
+        m_FrameSemaphores = std::make_unique<vulkanFrameSem[]>(m_ImageCount);
+
+        for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+        {
+            m_Frames[i].m_VKBackBuffer = BackBuffers[i];// ??? move? ???
+        }
+    }
+
+    // Destroy the old Swap Chain
+    if (VKOldSwapChain)vkDestroySwapchainKHR(m_Device->m_VKDevice, VKOldSwapChain, pAllocator);
+
+    // Create the Render Pass
+    // CONTINUE FROM 360 VK WINDOW CPP
+    return true;
+}
+
+bool vulkanWindow::CreateDepthResources(VkExtent2D Extents) noexcept
+{
+    VkImageCreateInfo ImageInfo
+    {
+        .sType          { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO },
+        .flags          { 0 },
+        .imageType      { VK_IMAGE_TYPE_2D },
+        .format         { m_VKDepthFormat },
+        .extent
+        {
+            .width  { Extents.width },
+            .height { Extents.height },
+            .depth  { 1 }
+        },
+        .mipLevels      { 1 },
+        .arrayLayers    { 1 },
+        .samples        { VK_SAMPLE_COUNT_1_BIT },
+        .tiling         { VK_IMAGE_TILING_OPTIMAL },
+        .usage          { VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT },
+        .sharingMode    { VK_SHARING_MODE_EXCLUSIVE },
+        .initialLayout  { VK_IMAGE_LAYOUT_UNDEFINED } // ???
+    };
+
+    VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
+
+    if (VkResult tmpRes{ vkCreateImage(m_Device->m_VKDevice, &ImageInfo, pAllocator, &m_VKDepthbuffer) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Failed to create the depth buffer image"sv, true);
+        return false;
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(m_Device->m_VKDevice, m_VKDepthbuffer, &memRequirements);
+
+    uint32_t MemoryIndex;
+    if (false == m_Device->getMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryIndex))
+    {
+        printWarning("Failed to find the right type of memory to allocate the zbuffer"sv, true);
+        return false;
+    }
+    VkMemoryAllocateInfo AllocInfo
+    {
+        .sType          { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO },
+        .allocationSize { memRequirements.size },
+        .memoryTypeIndex{ MemoryIndex }
+    };
+
+    if (VkResult tmpRes{ vkAllocateMemory(m_Device->m_VKDevice, &AllocInfo, pAllocator, &m_VKDepthbufferMemory) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Failed to allocate memory for the zbuffer"sv, true);
+        return false;
+    }
+
+    if (VkResult tmpRes{ vkBindImageMemory(m_Device->m_VKDevice, m_VKDepthbuffer, m_VKDepthbufferMemory, 0) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Failed to bind the zbuffer with its image/memory"sv, true);
+        return false;
+    }
+
+    VkImageViewCreateInfo ViewInfo
+    {
+        .sType      { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
+        .image      { m_VKDepthbuffer },
+        .viewType   { VK_IMAGE_VIEW_TYPE_2D },
+        .format     { m_VKDepthFormat },
+        .subresourceRange
+        {
+            .aspectMask     { VK_IMAGE_ASPECT_DEPTH_BIT },
+            .baseMipLevel   { 0 },
+            .levelCount     { 1 },
+            .baseArrayLayer { 0 },
+            .layerCount     { 1 }
+        }
+    };
+
+    if (VkResult tmpRes{ vkCreateImageView(m_Device->m_VKDevice, &ViewInfo, pAllocator, &m_VKDepthbufferView) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Failed to create the depth buffer view"sv, true);
+        return false;
+    }
+
     return true;
 
 }

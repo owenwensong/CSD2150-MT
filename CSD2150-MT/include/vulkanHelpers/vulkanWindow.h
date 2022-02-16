@@ -48,6 +48,12 @@ public:
     bool Initialize(std::shared_ptr<vulkanDevice>& Device, 
                     windowSetup const& Setup);
 
+private:
+
+    bool CreateOrResizeWindow(/* Get width and height internally */) noexcept;
+    bool CreateWindowSwapChain() noexcept;
+    bool CreateDepthResources(VkExtent2D Extents) noexcept;
+
 public: // all public, let whoever touch it /shrug
 
     windowsWindow                       m_windowsWindow         {};

@@ -323,3 +323,20 @@ std::shared_ptr<vulkanInstance>& vulkanDevice::getVKInst()
 {
     return m_pVKInst;
 }
+
+bool vulkanDevice::getMemoryType(uint32_t TypeBits, const VkFlags Properties, uint32_t& TypeIndex) const noexcept
+{
+    for (uint32_t i{ 0 }; i < 32; ++i, TypeBits >>= 1)
+    {
+        if (TypeBits & 1)
+        {
+            if (Properties == (m_VKDeviceMemoryProperties.memoryTypes[i].propertyFlags & Properties))
+            {
+                TypeIndex = i;
+                return true;
+            }
+        }
+    }
+    printWarning("Failed to find memory flags"sv);
+    return false;
+}

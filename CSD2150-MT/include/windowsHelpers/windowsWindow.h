@@ -57,8 +57,13 @@ private:
     HWND            m_hWindow       { nullptr };
     int             m_windowedWidth { minWindowSizeX };
     int             m_windowedHeight{ minWindowSizeY };
+
+public: // why is this needed so much by xgpu
+
     int             m_Width         { 0 };
     int             m_Height        { 0 };
+
+private:
     
     using bitfield = intptr_t;  // bitfield size match ptr size
 
