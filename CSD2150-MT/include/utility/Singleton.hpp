@@ -14,32 +14,33 @@
 #include <utility/Singleton.h>
 
 template<typename T>
-T* Singleton<T>::instance{ nullptr };
+std::unique_ptr<T> Singleton<T>::instance{ nullptr };
 // should be fine since header guards and all, plus only instantiated as needed.
 
 template <typename T>
 template <typename... constructionArgs>
 T* Singleton<T>::createInstance(constructionArgs&&... cArgs)
 {
-    return instance == nullptr ? (instance = ::new T{ std::forward<constructionArgs>(cArgs)... }) : instance;
+    instance.reset(::new T{ std::forward<constructionArgs>(cArgs)... });
+    return instance.get();
 }
 
 template<typename T>
 T* Singleton<T>::getPInstance()
 {
-    return instance;
+    return instance.get();
 }
 
 template<typename T>
 void Singleton<T>::destroyInstance()
 {   // deleting instance will call destructor, setting instance to nullptr
-    delete instance;
+    instance.reset();
 }
 
 template<typename T>
 Singleton<T>::~Singleton()
 {
-    instance = nullptr;
+    
 }
 
 template<typename T>

@@ -10,19 +10,12 @@
 #include <memory>
 #include <handlers/windowHandler.h>
 
-void destroyHandlers()
-{
-    windowHandler::destroyInstance();
-}
-
 int main()
 {
 #if defined(DEBUG) || defined(_DEBUG)
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif//DEBUG || 
     //char* leak{ new char[69] };
-
-    std::atexit(destroyHandlers);// destroy handlers for any exit
 
     windowHandler* pWH
     {

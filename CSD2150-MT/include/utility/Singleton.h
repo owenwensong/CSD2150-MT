@@ -9,15 +9,15 @@
  *          the ostrich algorithm. Since I will be the one using this class, 
  *          I will forego the usual foolproofing. 
  * 
+ *          Removed SBPtrClass in favour of unique_ptr
+ * 
  * Copyright (C) 2021 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
 #ifndef SINGLETON_H
 #define SINGLETON_H
 
-// this class stands for Singleton Base Pointer Class.
-// this class exist to provide a common singleton pointer for destruction
-class SBPtrClass { public: virtual ~SBPtrClass() {}; };
+#include <memory>   // unique_ptr
 
 /// @brief A class designed to make creation of singleton systems easier. 
 /// IMPORTANT TO NOTE WHEN INHERITING FROM THIS BASE CLASS:
@@ -29,7 +29,7 @@ class SBPtrClass { public: virtual ~SBPtrClass() {}; };
 ///     ClassName(ClassName const&) = delete;
 /// @tparam T inheriting class that is to become a singleton type object
 template<typename T>
-class Singleton : public SBPtrClass
+class Singleton
 {
 public:
 
@@ -57,10 +57,7 @@ protected:
 
 private:
 
-    // Using a raw pointer here instead of a unique pointer for the sole 
-    // purpose of doing things correctly rather than pretending there are no 
-    // leaks when atExit garbage collection kicks in.
-    static T* instance;
+    static std::unique_ptr<T> instance;
 
 };
 
