@@ -53,6 +53,10 @@ private:
     bool CreateOrResizeWindow(/* Get width and height internally */) noexcept;
     bool CreateWindowSwapChain() noexcept;
     bool CreateDepthResources(VkExtent2D Extents) noexcept;
+    bool CreateRenderPass(VkSurfaceFormatKHR& VKColorSurfaceFormat, VkFormat& VKDepthSurfaceFormat) noexcept;
+    bool CreateWindowCommandBuffers() noexcept;
+
+    void DestroyRenderPass() noexcept;
 
 public: // all public, let whoever touch it /shrug
 

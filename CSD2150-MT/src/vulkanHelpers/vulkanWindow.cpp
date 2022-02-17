@@ -143,7 +143,35 @@ vulkanWindow::vulkanWindow(std::shared_ptr<vulkanDevice>& Device,
 
 vulkanWindow::~vulkanWindow()
 {
-    if (!m_Device)return;
+    if (!m_Device)return;// assume VKInst valid if this is valid
+    VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
+
+    vkDeviceWaitIdle(m_Device->m_VKDevice);
+
+    if (m_Frames.get())
+    {
+        for (uint32_t i{ 0 }, t{ m_ImageCount }; i < t; ++i)
+        {
+            MinimalDestroyFrame(m_Device->m_VKDevice, m_Frames[i], pAllocator);
+            MinimalDestroyFrameSemaphores(m_Device->m_VKDevice, m_FrameSemaphores[i], pAllocator);
+        }
+        m_Frames.reset();
+        m_FrameSemaphores.reset();
+
+        // Release the depth buffer (will exist if Framebuffer exists right?)
+        vkDestroyImageView(m_Device->m_VKDevice, m_VKDepthbufferView, pAllocator);
+        vkDestroyImage(m_Device->m_VKDevice, m_VKDepthbuffer, pAllocator);
+        vkFreeMemory(m_Device->m_VKDevice, m_VKDepthbufferMemory, pAllocator);
+        // leave the pointers invalid? Checks done on Framebuffer stuff anyway?
+    }
+    // Destroy render pass and pipeline
+    DestroyRenderPass();
+
+    if (m_VKPipeline)vkDestroyPipeline(m_Device->m_VKDevice, m_VKPipeline, pAllocator);
+
+    // Destroy the Swap Chain
+    if (m_VKSwapchain)vkDestroySwapchainKHR(m_Device->m_VKDevice, m_VKSwapchain, pAllocator);
+
     if (auto& VKI{ m_Device->getVKInst() }; VKI)
     {
         vkDestroySurfaceKHR(VKI->m_VkHandle, m_VKSurface, VKI->m_pVKAllocator);
@@ -306,9 +334,8 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
         }
     }
 
+    if (false == CreateOrResizeWindow())return false;
 
-
-    // Create surface and stuff, returning now just to test
     m_bfInitializeOK = 1;
     return true;
 
@@ -316,7 +343,7 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
 
 bool vulkanWindow::CreateOrResizeWindow() noexcept
 {
-   return CreateWindowSwapChain();
+   return CreateWindowSwapChain() && CreateWindowCommandBuffers();
 }
 
 bool vulkanWindow::CreateWindowSwapChain() noexcept
@@ -327,7 +354,7 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
 
     VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
 
-    if (VkResult tmpRes{ vkDeviceWaitIdle(m_Device->m_VKDevice)}; tmpRes != VK_SUCCESS)
+    if (VkResult tmpRes{ vkDeviceWaitIdle(m_Device->m_VKDevice) }; tmpRes != VK_SUCCESS)
     {
         printVKWarning(tmpRes, "Failed to wait for device", true);
         // ???? Pretend there was no error ????
@@ -341,8 +368,8 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
             MinimalDestroyFrame(m_Device->m_VKDevice, m_Frames[i], pAllocator);
             MinimalDestroyFrameSemaphores(m_Device->m_VKDevice, m_FrameSemaphores[i], pAllocator);
         }
-        m_Frames.release();         // I guess release instead of reset because
-        m_FrameSemaphores.release();// it is attached to VKOldSwapChain???
+        m_Frames.reset();         // Destroyed in the step before (changed from release)
+        m_FrameSemaphores.reset();// Destroyed in the step before (changed from release)
 
         // Release the depth buffer (will exist if Framebuffer exists right?)
         vkDestroyImageView(m_Device->m_VKDevice, m_VKDepthbufferView, pAllocator);
@@ -352,11 +379,11 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
     }
 
     // Destroy render pass and pipeline
-    if (m_VKRenderPass)vkDestroyRenderPass(m_Device->m_VKDevice, m_VKRenderPass, pAllocator);
-    m_VKRenderPass = VK_NULL_HANDLE;
+    DestroyRenderPass();
 
     if (m_VKPipeline)vkDestroyPipeline(m_Device->m_VKDevice, m_VKPipeline, pAllocator);
     m_VKPipeline = VK_NULL_HANDLE;
+    // Pipeline destruction handled somewhere else ???????
 
     // Create the Swapchain
     {
@@ -446,7 +473,73 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
     if (VKOldSwapChain)vkDestroySwapchainKHR(m_Device->m_VKDevice, VKOldSwapChain, pAllocator);
 
     // Create the Render Pass
-    // CONTINUE FROM 360 VK WINDOW CPP
+    if (false == CreateRenderPass(m_VKSurfaceFormat, m_VKDepthFormat))return false;
+
+    // Create the Image Views
+    {
+        VkImageViewCreateInfo CreateInfo
+        {
+            .sType      { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO },
+            .viewType   { VK_IMAGE_VIEW_TYPE_2D },
+            .format     { m_VKSurfaceFormat.format },
+            .components
+            {
+                .r{ VK_COMPONENT_SWIZZLE_R },
+                .g{ VK_COMPONENT_SWIZZLE_G },
+                .b{ VK_COMPONENT_SWIZZLE_B },
+                .a{ VK_COMPONENT_SWIZZLE_A }
+            },
+            .subresourceRange
+            {
+                .aspectMask     { VK_IMAGE_ASPECT_COLOR_BIT },
+                .baseMipLevel   { 0 },
+                .levelCount     { 1 },
+                .baseArrayLayer { 0 },
+                .layerCount     { 1 }
+            }
+        };
+
+        for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+        {
+            auto& Frame{ m_Frames[i] };
+            CreateInfo.image = Frame.m_VKBackBuffer;
+
+            if (VkResult tmpRes{ vkCreateImageView(m_Device->m_VKDevice, &CreateInfo, pAllocator, &Frame.m_VKBackBufferView) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create an Image View for a back buffer"sv, true);
+                return false;
+            }
+        }
+
+    }
+
+    // Create Framebuffer
+    {
+        std::array<VkImageView, 2> Attachment;// ???
+        VkFramebufferCreateInfo CreateInfo
+        {
+            .sType          { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO },
+            .renderPass     { m_VKRenderPass },
+            .attachmentCount{ static_cast<uint32_t>(Attachment.size()) },
+            .pAttachments   { Attachment.data() },
+            .width          { static_cast<uint32_t>(m_windowsWindow.getWidth()) },
+            .height         { static_cast<uint32_t>(m_windowsWindow.getHeight()) },
+            .layers         { 1 }
+        };
+
+        for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+        {
+            auto& Frame{ m_Frames[i] };
+            Attachment[0] = Frame.m_VKBackBufferView;
+            Attachment[1] = m_VKDepthbufferView;
+            if (VkResult tmpRes{ vkCreateFramebuffer(m_Device->m_VKDevice, &CreateInfo, pAllocator, &Frame.m_VKFramebuffer) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Buffer"sv, true);
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -533,4 +626,178 @@ bool vulkanWindow::CreateDepthResources(VkExtent2D Extents) noexcept
 
     return true;
 
+}
+
+bool vulkanWindow::CreateRenderPass(VkSurfaceFormatKHR& VKColorSurfaceFormat, VkFormat& VKDepthSurfaceFormat) noexcept
+{
+    std::array ColorAttachmentRef
+    {
+        VkAttachmentReference
+        {
+            .attachment { 0 },
+            .layout     { VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL }
+        }
+    };
+
+    std::array DepthAttachmentRef
+    {
+        VkAttachmentReference
+        {
+            .attachment { 1 },
+            .layout     { VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
+        }
+    };
+
+    std::array SubpassDesc
+    {
+        VkSubpassDescription
+        {
+            .pipelineBindPoint      { VK_PIPELINE_BIND_POINT_GRAPHICS },
+            .colorAttachmentCount   { static_cast<uint32_t>(ColorAttachmentRef.size()) },
+            .pColorAttachments      { ColorAttachmentRef.data() },
+            .pDepthStencilAttachment{ DepthAttachmentRef.data() }
+        }
+    };
+
+    std::array SubpassDependancy
+    {
+        VkSubpassDependency
+        {
+            .srcSubpass     { VK_SUBPASS_EXTERNAL },
+            .dstSubpass     { 0 },   // VK_SUBPASS_CONTENTS_INLINE???
+            .srcStageMask   { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT },
+            .dstStageMask   { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT },
+            .srcAccessMask  { 0 },
+            .dstAccessMask  { VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT }
+        }
+    };
+
+    std::array AttachmentDesc
+    {
+        // Color Attachment
+        VkAttachmentDescription
+        {
+            .format         { VKColorSurfaceFormat.format },
+            .samples        { VK_SAMPLE_COUNT_1_BIT },
+            .loadOp         { m_bfClearOnRender ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_DONT_CARE },
+            .storeOp        { VK_ATTACHMENT_STORE_OP_STORE },
+            .stencilLoadOp  { VK_ATTACHMENT_LOAD_OP_DONT_CARE },
+            .stencilStoreOp { VK_ATTACHMENT_STORE_OP_DONT_CARE },
+            .initialLayout  { VK_IMAGE_LAYOUT_UNDEFINED },    // ???
+            .finalLayout    { VK_IMAGE_LAYOUT_PRESENT_SRC_KHR }
+        },
+        // Depth Attachment
+        VkAttachmentDescription
+        {
+            .format         { VKDepthSurfaceFormat },
+            .samples        { VK_SAMPLE_COUNT_1_BIT },
+            .loadOp         { VK_ATTACHMENT_LOAD_OP_CLEAR },
+            .storeOp        { VK_ATTACHMENT_STORE_OP_DONT_CARE },
+            .stencilLoadOp  { VK_ATTACHMENT_LOAD_OP_DONT_CARE },
+            .stencilStoreOp { VK_ATTACHMENT_STORE_OP_DONT_CARE },
+            .initialLayout  { VK_IMAGE_LAYOUT_UNDEFINED },    // ???
+            .finalLayout    { VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL }
+        }
+    };
+
+    VkRenderPassCreateInfo CreateInfo
+    {
+        .sType          { VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO },
+        .attachmentCount{ static_cast<uint32_t>(AttachmentDesc.size()) },
+        .pAttachments   { AttachmentDesc.data() },
+        .subpassCount   { static_cast<uint32_t>(SubpassDesc.size()) },
+        .pSubpasses     { SubpassDesc.data() },
+        .dependencyCount{ static_cast<uint32_t>(SubpassDependancy.size()) },
+        .pDependencies  { SubpassDependancy.data() }
+    };
+
+    if (VkResult tmpRes{ vkCreateRenderPass(m_Device->m_VKDevice, &CreateInfo, m_Device->m_pVKInst->m_pVKAllocator, &m_VKRenderPass) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "Unable to create a render pass for the window"sv, true);
+        return false;
+    }
+
+    return true;
+
+}
+
+bool vulkanWindow::CreateWindowCommandBuffers() noexcept
+{
+    VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
+
+    for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+    {
+        auto& Frame{ m_Frames[i] };
+
+        {   // COMMAND POOLS
+            VkCommandPoolCreateInfo CreateInfo
+            {
+                .sType{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
+                .flags{ VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT },
+                .queueFamilyIndex{ m_Device->m_MainQueueIndex }
+            };
+            if (VkResult tmpRes{ vkCreateCommandPool(m_Device->m_VKDevice, &CreateInfo, pAllocator, &Frame.m_VKCommandPool) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Command Pool"sv, true);
+                return false;
+            }
+        }
+
+        {   // COMMAND BUFFERS
+            VkCommandBufferAllocateInfo CreateInfo
+            {
+                .sType      { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
+                .commandPool{ Frame.m_VKCommandPool },
+                .level      { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
+                .commandBufferCount{ 1 }
+            };
+            if (VkResult tmpRes{ vkAllocateCommandBuffers(m_Device->m_VKDevice, &CreateInfo, &Frame.m_VKCommandBuffer) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Command Buffer"sv, true);
+                return false;
+            }
+        }
+
+        {   // FENCES
+            VkFenceCreateInfo CreateInfo
+            {
+                .sType{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO },
+                .flags{ VK_FENCE_CREATE_SIGNALED_BIT }
+            };
+            if (VkResult tmpRes{ vkCreateFence(m_Device->m_VKDevice, &CreateInfo, pAllocator, &Frame.m_VKFence) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Fence"sv, true);
+                return false;
+            }
+        }
+
+        {   // SEMAPHORES
+            auto& FrameSemaphores{ m_FrameSemaphores[i] };
+            VkSemaphoreCreateInfo CreateInfo
+            {
+                .sType{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO }
+            };
+            if (VkResult tmpRes{ vkCreateSemaphore(m_Device->m_VKDevice, &CreateInfo, pAllocator, &FrameSemaphores.m_VKImageAcquiredSemaphore) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Image Semaphore"sv, true);
+                return false;
+            }
+            if (VkResult tmpRes{ vkCreateSemaphore(m_Device->m_VKDevice, &CreateInfo, pAllocator, &FrameSemaphores.m_VKRenderCompleteSemaphore) }; tmpRes != VK_SUCCESS)
+            {
+                printVKWarning(tmpRes, "Unable to create a Frame Render Semaphore"sv, true);
+                return false;
+            }
+        }
+
+    }
+
+    return true;
+
+}
+
+void vulkanWindow::DestroyRenderPass() noexcept
+{
+    if (!m_Device)return;// assume OK instance if has device
+    if (m_VKRenderPass)vkDestroyRenderPass(m_Device->m_VKDevice, m_VKRenderPass, m_Device->m_pVKInst->m_pVKAllocator);
+    m_VKRenderPass = VK_NULL_HANDLE;
 }
