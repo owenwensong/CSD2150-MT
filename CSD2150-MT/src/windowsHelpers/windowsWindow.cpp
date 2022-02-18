@@ -62,6 +62,11 @@ bool windowsWindow::isFocused() const noexcept
     return m_hWindow == GetFocus();
 }
 
+void windowsWindow::resetResized() noexcept
+{
+    m_bfResized = 0;
+}
+
 HWND windowsWindow::getSystemWindowHandle() const noexcept
 {
     return m_hWindow;

@@ -36,6 +36,8 @@ public:
     bool isResized() const noexcept;
     bool isFocused() const noexcept;
 
+    void resetResized() noexcept;
+
     HWND getSystemWindowHandle() const noexcept;
 
     std::tuple<int, int> getPosition() const;

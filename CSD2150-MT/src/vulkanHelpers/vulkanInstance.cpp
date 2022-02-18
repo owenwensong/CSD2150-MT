@@ -11,9 +11,23 @@
 #include <vulkanHelpers/printWarnings.h>
 #include <utility/windowsInclude.h>
 #include <vulkan/vulkan_win32.h>    // for surface extension name
+#include <iostream>	// for debugCallback cerr
 #include <memory>
 #include <array>
 #include <span>
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
+(
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, 
+		VkDebugUtilsMessageTypeFlagsEXT messageType, 
+		VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, 
+		void* pUserData
+)
+{
+		std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+		return VK_FALSE;
+}
 
 // *****************************************************************************
 // ************************************************************** CTOR/DTOR ****
@@ -21,14 +35,51 @@
 vulkanInstance::vulkanInstance(bool enableDebugLayers, bool enableRenderDoc) :
 		m_VkHandle{ createVkInstance(enableDebugLayers, enableRenderDoc) },
 		m_pVKAllocator{ nullptr },
+		m_DebugMessenger{ nullptr },
 		bValidation{ enableDebugLayers ? 1 : 0 },
 		bRenderDoc{ enableRenderDoc ? 1 : 0 }
 {
-
+		if (OK() && bValidation)
+		{
+				VkDebugUtilsMessengerCreateInfoEXT CreateInfo
+				{
+						.sType					{ VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT },
+						.messageSeverity{ VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT },
+						.messageType		{ VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT },
+						.pfnUserCallback{ debugCallback }
+				};
+				PFN_vkCreateDebugUtilsMessengerEXT pFnCreateDebugUtilsMessenger
+				{
+						reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>
+						(
+								vkGetInstanceProcAddr(m_VkHandle, "vkCreateDebugUtilsMessengerEXT")
+						)
+				};
+				if (pFnCreateDebugUtilsMessenger == nullptr)
+				{
+						printWarning("FAILED TO GET PFN_vkCreateDebugUtilsMessengerEXT"sv, true);
+				}
+				else if (VkResult tmpRes{ pFnCreateDebugUtilsMessenger(m_VkHandle, &CreateInfo, m_pVKAllocator, &m_DebugMessenger) }; tmpRes != VK_SUCCESS)
+				{
+						printVKWarning(tmpRes, "FAILED TO SET UP DEBUG MESSENGER"sv, true);
+				}
+		}
 }
 
 vulkanInstance::~vulkanInstance()
 {
+		if (m_DebugMessenger)
+		{
+				if (PFN_vkDestroyDebugUtilsMessengerEXT pFnDestroyDebugUtilsMessenger{ reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(m_VkHandle, "vkDestroyDebugUtilsMessengerEXT")) }; pFnDestroyDebugUtilsMessenger != nullptr)
+				{
+						pFnDestroyDebugUtilsMessenger(m_VkHandle, m_DebugMessenger, m_pVKAllocator);
+				}
+				else
+				{
+						printWarning("FAILED TO GET PFN_vkDestroyDebugUtilsMessengerEXT"sv, true);
+				}
+
+		}
 		vkDestroyInstance(m_VkHandle, nullptr);
 }
 

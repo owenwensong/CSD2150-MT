@@ -48,6 +48,14 @@ public:
     bool Initialize(std::shared_ptr<vulkanDevice>& Device, 
                     windowSetup const& Setup);
 
+    // My own stuff, giving up on reading xGPU especially with only a few hours remaining
+
+    /// @brief begin a frame, made similar to the way imgui does their calls
+    /// @return used to signal frame begin success, put frame end inside.
+    bool FrameBegin();
+
+    void FrameEnd();
+
 private:
 
     bool CreateOrResizeWindow(/* Get width and height internally */) noexcept;
@@ -90,6 +98,7 @@ public: // all public, let whoever touch it /shrug
     bitfield                            m_bfClearOnRender : 1   { 0 };
     bitfield                            m_bfRebuildSwapChain : 1{ 0 };
     bitfield                            m_bfInitializeOK : 1    { 0 };
+    bitfield                            m_bfFrameBeginState : 1 { 0 };// unused in release
 
 };
 

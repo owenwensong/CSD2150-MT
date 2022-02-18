@@ -801,3 +801,53 @@ void vulkanWindow::DestroyRenderPass() noexcept
     if (m_VKRenderPass)vkDestroyRenderPass(m_Device->m_VKDevice, m_VKRenderPass, m_Device->m_pVKInst->m_pVKAllocator);
     m_VKRenderPass = VK_NULL_HANDLE;
 }
+
+bool vulkanWindow::FrameBegin()
+{
+    if (m_windowsWindow.isMinimized())return false;
+    assert(!m_bfFrameBeginState++);// will fail if was not 0 before starting
+
+    // resize the window if needed
+    if (m_windowsWindow.isResized())
+    {
+        vkDeviceWaitIdle(m_Device->m_VKDevice);
+        CreateOrResizeWindow();// error strings alr printed here
+        m_windowsWindow.resetResized();
+    }
+
+    // sync up with previous frame
+    {
+        auto& Frame{ m_Frames[m_FrameIndex] };
+        auto& FrameSem{ m_FrameSemaphores[m_SemaphoreIndex] };
+
+        // busy way for previous frame to finish rendering
+        for (;;)
+        {
+            VkResult tmpRes{ vkWaitForFences(m_Device->m_VKDevice, 1, &Frame.m_VKFence, VK_TRUE, 100) };
+            switch (tmpRes)
+            {
+            case VK_SUCCESS: break;
+            case VK_TIMEOUT: continue;
+            default:
+                printVKWarning(tmpRes, "Failed to wait?"sv, true);
+                assert(false);
+                break;
+            }
+            break;
+        }
+
+        if (VkResult tmpRes{  }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "vkAcquireNextImageKHR"sv, true);
+            assert(false);
+        }
+
+    }
+
+    return false;
+}
+
+void vulkanWindow::FrameEnd()
+{
+    assert(m_bfFrameBeginState--);// will fail if was 0 before starting
+}

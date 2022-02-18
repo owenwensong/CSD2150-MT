@@ -36,6 +36,8 @@ public:
 
 private:
 
+    VkDebugUtilsMessengerEXT m_DebugMessenger;
+
     using bitfield = intptr_t;  // bitfield size match ptr size
 
     bitfield bValidation : 1;   // add validation layers to the VkInstance
