@@ -28,11 +28,11 @@ int main()
     };
     if (pWH == nullptr || !pWH->OK())
     {
-        printf_s("FAILED TO CREATE WINDOW HANDLER\n");
+        printWarning("FAILED TO CREATE THE WINDOW HANDLER"sv, true);
         return -3;
     }
 
-    if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_Title{L"TestWindow"sv}}) }; upVKWin && upVKWin->OK())
+    if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{ .m_ClearColorR{ 0.0f }, .m_ClearColorG{ 0.0f }, .m_ClearColorB{ 0.0f }, .m_Title{ L"TestWindow"sv } }) }; upVKWin && upVKWin->OK())
     {
         windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
         VkShaderModule fragShader{ pWH->createShaderModule("../Assets/Shaders/triangleFrag.spv") };
@@ -41,7 +41,7 @@ int main()
         {
             .stageFlags{ VK_SHADER_STAGE_VERTEX_BIT },
             .offset{ 0 },
-            .size{ 2 * sizeof(float) },
+            .size{ sizeof(float) },
         };
         VkPipelineLayout pipelineLayout
         {
@@ -61,7 +61,15 @@ int main()
         vulkanPipeline trianglePipeline;
         pWH->createPipelineInfo(trianglePipeline, vertShader, fragShader);
 
-        while (pWH->processInputEvents())
+        // only enter loop if everything OK
+        if (fragShader == VK_NULL_HANDLE || 
+            vertShader == VK_NULL_HANDLE || 
+            pipelineLayout == VK_NULL_HANDLE)
+        {
+            printWarning("pipeline prep failed"sv, true);
+            
+        }
+        else while (pWH->processInputEvents())
         {
             win0Input.update();
             win0Input.debugPrint(0b0101);
@@ -73,17 +81,8 @@ int main()
             {
                 upVKWin->createAndSetPipeline(trianglePipeline, pipelineLayout);
 
-                std::array<float, 2> winSize
-                {
-                    static_cast<float>(upVKWin->m_windowsWindow.getWidth()),
-                    static_cast<float>(upVKWin->m_windowsWindow.getHeight())
-                };
-                vkCmdPushConstants
-                (
-                    FCB, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
-                    static_cast<uint32_t>(winSize.size() * sizeof(float)),
-                    winSize.data()
-                );
+                float aspectRatioYX{ static_cast<float>(upVKWin->m_windowsWindow.getHeight()) / upVKWin->m_windowsWindow.getWidth() };
+                vkCmdPushConstants(FCB, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(float)), &aspectRatioYX);
                 vkCmdDraw(FCB, 3, 1, 0, 0);
 
                 upVKWin->FrameEnd();

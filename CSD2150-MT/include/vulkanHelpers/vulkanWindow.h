@@ -100,7 +100,6 @@ public: // all public, let whoever touch it /shrug
     VkRenderPass                        m_VKRenderPass          {};
     //VkPipeline                          m_VKPipeline            {};
     std::unordered_map<vulkanPipeline*, VkPipeline> m_VKPipelines{};
-    vulkanPipeline*                     m_pPipelineReference    { nullptr };// pointer used to create the current pipeline, used to not recreate if already in use
     VkSurfaceFormatKHR                  m_VKSurfaceFormat       {};
     VkFormat                            m_VKDepthFormat         {};
     VkPresentModeKHR                    m_VKPresentMode         {};
