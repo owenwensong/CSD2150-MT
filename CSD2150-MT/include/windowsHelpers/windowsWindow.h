@@ -65,7 +65,7 @@ public: // why is this needed so much by xgpu
     int             m_Width         { 0 };
     int             m_Height        { 0 };
 
-private:
+public: // set public to adjust from inside WHWndProc
     
     using bitfield = intptr_t;  // bitfield size match ptr size
 

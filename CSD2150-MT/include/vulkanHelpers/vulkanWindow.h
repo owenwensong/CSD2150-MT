@@ -50,11 +50,16 @@ public:
 
     // My own stuff, giving up on reading xGPU especially with only a few hours remaining
 
-    /// @brief begin a frame, made similar to the way imgui does their calls
+    /// @brief begin a frame, made similar to the way imgui does their calls,
+    ///        must be called in order FrameBegin, FrameEnd, PageFlip
+    ///        if FrameBegin returns false, don't end or pageFlip.
     /// @return used to signal frame begin success, put frame end inside.
     bool FrameBegin();
 
+    /// @brief submits queues
     void FrameEnd();
+
+    void PageFlip();
 
 private:
 
@@ -98,7 +103,7 @@ public: // all public, let whoever touch it /shrug
     bitfield                            m_bfClearOnRender : 1   { 0 };
     bitfield                            m_bfRebuildSwapChain : 1{ 0 };
     bitfield                            m_bfInitializeOK : 1    { 0 };
-    bitfield                            m_bfFrameBeginState : 1 { 0 };// unused in release
+    bitfield                            m_bfFrameBeginState : 2 { 0 };// unused in release
 
 };
 

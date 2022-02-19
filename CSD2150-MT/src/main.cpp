@@ -39,6 +39,43 @@ int main()
         {
             win0Input.update();
             win0Input.debugPrint(0b0101);
+            if (upVKWin->FrameBegin())
+            {
+                static uint32_t counter{ 0 };
+                // stuff
+                static float R{ 0.0f };
+                static float G{ 0.0f };
+                static float B{ 0.0f };
+
+                switch (++counter)
+                {
+                case 3000:
+                    R = 1.0f; G = 0.0f; B = 0.0f;
+                    break;
+                case 6000:
+                    R = 0.0f; G = 1.0f; B = 0.0f;
+                    break;
+                case 9000:
+                    R = 0.0f; G = 0.0f; B = 1.0f;
+                    break;
+                case 12000:
+                    R = 1.0f; G = 1.0f; B = 1.0f;
+                    break;
+                case 15000:
+                    R = 0.0f; G = 0.0f; B = 0.0f;
+                    counter = 0;
+                    break;
+                default:
+                    break;
+                }
+
+                upVKWin->m_VKClearValue[0].color.float32[0] = R;
+                upVKWin->m_VKClearValue[0].color.float32[1] = G;
+                upVKWin->m_VKClearValue[0].color.float32[2] = B;
+                // end of stuff
+                upVKWin->FrameEnd();
+                upVKWin->PageFlip();
+            }
         }
     }
 

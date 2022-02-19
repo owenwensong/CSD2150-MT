@@ -805,7 +805,8 @@ void vulkanWindow::DestroyRenderPass() noexcept
 bool vulkanWindow::FrameBegin()
 {
     if (m_windowsWindow.isMinimized())return false;
-    assert(!m_bfFrameBeginState++);// will fail if was not 0 before starting
+    // will fail if was not 0 before starting
+    assert(!m_bfFrameBeginState && (m_bfFrameBeginState += 2));
 
     // resize the window if needed
     if (m_windowsWindow.isResized())
@@ -836,18 +837,148 @@ bool vulkanWindow::FrameBegin()
             break;
         }
 
-        if (VkResult tmpRes{  }; tmpRes != VK_SUCCESS)
+        if (VkResult tmpRes{ vkAcquireNextImageKHR(m_Device->m_VKDevice, m_VKSwapchain, UINT64_MAX, FrameSem.m_VKImageAcquiredSemaphore, VK_NULL_HANDLE, &m_FrameIndex) }; tmpRes != VK_SUCCESS)
         {
-            printVKWarning(tmpRes, "vkAcquireNextImageKHR"sv, true);
+            printVKWarning(tmpRes, "vkAcquireNextImageKHR failed?"sv, true);
             assert(false);
         }
 
     }
 
-    return false;
+    auto& Frame{ m_Frames[m_FrameIndex] };
+
+    // Reset the command buffer
+    {
+        if (VkResult tmpRes{ vkResetCommandPool(m_Device->m_VKDevice, Frame.m_VKCommandPool, 0) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "vkResetCommandPool failed?"sv, true);
+            assert(false);
+        }
+
+        VkCommandBufferBeginInfo CommandBufferBeginInfo
+        {
+            .sType{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
+            .flags{ VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT }
+        };
+
+        if (VkResult tmpRes{ vkBeginCommandBuffer(Frame.m_VKCommandBuffer, &CommandBufferBeginInfo) }; tmpRes != VK_SUCCESS)
+        {
+            printVKWarning(tmpRes, "vkBeginCommandBuffer failed?"sv, true);
+            assert(false);
+        }
+    }
+
+    // setup the renderpass
+    VkRenderPassBeginInfo RenderPassBeginInfo
+    {
+        .sType          { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO },
+        .renderPass     { m_VKRenderPass },
+        .framebuffer    { Frame.m_VKFramebuffer },
+        .renderArea
+        {
+            .extent
+            {
+                .width  { static_cast<uint32_t>(m_windowsWindow.getWidth()) },
+                .height { static_cast<uint32_t>(m_windowsWindow.getHeight()) }
+            }
+        },
+        .clearValueCount{ m_bfClearOnRender ? static_cast<uint32_t>(m_VKClearValue.size()) : 0u},
+        .pClearValues   { m_bfClearOnRender ? m_VKClearValue.data() : nullptr}
+    };
+    vkCmdBeginRenderPass(Frame.m_VKCommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // set the default viewport
+    m_DefaultScissor.offset.x = 0;
+    m_DefaultScissor.offset.y = 0;
+    m_DefaultScissor.extent.width   = static_cast<uint32_t>(m_windowsWindow.getWidth());
+    m_DefaultScissor.extent.height  = static_cast<uint32_t>(m_windowsWindow.getHeight());
+
+    return true;
 }
 
 void vulkanWindow::FrameEnd()
 {
-    assert(m_bfFrameBeginState--);// will fail if was 0 before starting
+    // will fail if was not 2 before starting
+    assert(--m_bfFrameBeginState);
+
+    auto& Frame     { m_Frames[m_FrameIndex] };
+    auto& FrameSem  { m_FrameSemaphores[m_SemaphoreIndex] };
+
+    // officially end the pass
+    vkCmdEndRenderPass(Frame.m_VKCommandBuffer);
+
+    // officially end the commands
+    if (VkResult tmpRes{ vkEndCommandBuffer(Frame.m_VKCommandBuffer) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "vkEndCommandBuffer failed?"sv, true);
+        assert(false);
+    }
+
+    // Reset the frame fence to know when we are finished with the frame
+    if (VkResult tmpRes{ vkResetFences(m_Device->m_VKDevice, 1, &Frame.m_VKFence) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "vkResetFences failed?"sv, true);
+        assert(false);
+    }
+
+    // Submit the frame to the queue for processing 
+    VkPipelineStageFlags WaitStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    VkSubmitInfo SubmitInfo
+    {
+        .sType                  { VK_STRUCTURE_TYPE_SUBMIT_INFO },
+        .waitSemaphoreCount     { 1 },
+        .pWaitSemaphores        { &FrameSem.m_VKImageAcquiredSemaphore },
+        .pWaitDstStageMask      { &WaitStage },
+        .commandBufferCount     { 1 },
+        .pCommandBuffers        { &Frame.m_VKCommandBuffer },
+        .signalSemaphoreCount   { 1 },
+        .pSignalSemaphores      { &FrameSem.m_VKRenderCompleteSemaphore }
+    };
+
+    // supposedly as good, if not better than lock_guard
+    std::scoped_lock Lk{ m_Device->m_VKMainQueue };
+    if (VkResult tmpRes{ vkQueueSubmit(m_Device->m_VKMainQueue.get(), 1, &SubmitInfo, Frame.m_VKFence) }; tmpRes != VK_SUCCESS)
+    {
+        printVKWarning(tmpRes, "vkQueueSubmit failed?"sv, true);
+        assert(false);
+    }
+}
+
+void vulkanWindow::PageFlip()
+{
+    // will fail if was not 1 before starting
+    assert(!(--m_bfFrameBeginState));
+
+    auto& Frame     { m_Frames[m_FrameIndex] };
+    auto& FrameSem  { m_FrameSemaphores[m_SemaphoreIndex] };
+
+    uint32_t PresetIndex{ m_FrameIndex };
+    VkPresentInfoKHR Info
+    {
+        .sType              { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR },
+        .waitSemaphoreCount { 1 },
+        .pWaitSemaphores    { &FrameSem.m_VKRenderCompleteSemaphore },
+        .swapchainCount     { 1 },
+        .pSwapchains        { &m_VKSwapchain },
+        .pImageIndices      { &PresetIndex }
+    };
+
+    std::scoped_lock Lk{ m_Device->m_VKMainQueue };
+    if (VkResult tmpRes{ vkQueuePresentKHR(m_Device->m_VKMainQueue.get(), &Info) }; tmpRes != VK_SUCCESS)
+    {
+        switch (tmpRes)
+        {
+        case VK_SUBOPTIMAL_KHR:
+        case VK_ERROR_OUT_OF_DATE_KHR:
+            if (CreateOrResizeWindow())break;
+        default:
+            printVKWarning(tmpRes, "vkQueuePresentKHR Failed?"sv, true);
+            assert(false);
+            break;
+        }
+    }
+
+    m_FrameIndex =      (++m_FrameIndex)     % m_ImageCount;
+    m_SemaphoreIndex =  (++m_SemaphoreIndex) % m_ImageCount;
+
 }

@@ -177,9 +177,23 @@ LRESULT CALLBACK WHWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) n
     case WM_SYSCOMMAND:
         if (SC_KEYMENU == wParam)return 0;// disable alt-space
         break;
-    //case WM_SIZE:
-    //    printf_s("RESIZED!!!\n");
-    //    break;
+    case WM_SIZE:
+        if (vulkanWindow* pVW{ reinterpret_cast<vulkanWindow*>(GetWindowLongPtr(hWnd, GWLP_USERDATA)) }; pVW != nullptr)
+        {
+            switch (wParam)
+            {
+            case SIZE_MINIMIZED:
+                pVW->m_windowsWindow.m_bfMinimized = 1;
+                break;
+            default:
+                pVW->m_windowsWindow.m_Width  = static_cast<int>(lParam & 0xFFFF);
+                pVW->m_windowsWindow.m_Height = static_cast<int>(lParam >> 16 & 0xFFFF);
+                pVW->m_windowsWindow.m_bfResized = 1;
+                pVW->m_windowsWindow.m_bfMinimized = 0;
+                break;
+            }
+        }
+        break;
     //case WM_SIZING:
     //    printf_s("RESIZING\n");
     //    break;
