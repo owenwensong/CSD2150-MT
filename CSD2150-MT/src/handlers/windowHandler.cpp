@@ -261,9 +261,13 @@ bool windowHandler::createPipelineInfo(vulkanPipeline& outPipeline, VkShaderModu
 				.pDynamicStates			{ outPipeline.m_DynamicStates.data() }
 		};
 
-		
-
 		return true;
+}
+
+VkDescriptorSet windowHandler::createDescriptorSet(VkDescriptorSetAllocateInfo const& CreateInfo, VkDescriptorBufferInfo const& ConfigInfo)
+{
+
+		return VkDescriptorSet();
 }
 
 // *****************************************************************************

@@ -35,11 +35,14 @@ int main()
     if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_Title{L"TestWindow"sv}}) }; upVKWin && upVKWin->OK())
     {
         windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
-        printf_s("AAAA\n");
         VkShaderModule fragShader{ pWH->createShaderModule("../Assets/Shaders/triangleFrag.spv") };
-        printf_s("BBBB\n");
         VkShaderModule vertShader{ pWH->createShaderModule("../Assets/Shaders/triangleVert.spv") };
-        printf_s("CCCC\n");
+        VkPushConstantRange pushConstantRange
+        {
+            .stageFlags{ VK_SHADER_STAGE_VERTEX_BIT },
+            .offset{ 0 },
+            .size{ 2 * sizeof(float) },
+        };
         VkPipelineLayout pipelineLayout
         {
             pWH->createPipelineLayout
@@ -49,8 +52,8 @@ int main()
                     .sType{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
                     .setLayoutCount         { 0 },
                     .pSetLayouts            { nullptr },
-                    .pushConstantRangeCount { 0 },
-                    .pPushConstantRanges    { nullptr }
+                    .pushConstantRangeCount { 1 },                  // just 1
+                    .pPushConstantRanges    { &pushConstantRange }  // to push winsize
                 }
             )
         };
@@ -66,28 +69,21 @@ int main()
             // FCB stands for Frame Command Buffer, this frame's command buffer!
             if (VkCommandBuffer FCB{ upVKWin->FrameBegin() }; FCB != VK_NULL_HANDLE)
             {
-                static uint32_t counter{ 0 };
-                // stuff
-                static float R{ 0.0f };
-                static float G{ 0.0f };
-                static float B{ 0.0f };
-                switch (++counter)
-                {
-                case 3000:  R = 0.5f; G = 0.0f; B = 0.0f; break;
-                case 6000:  R = 0.0f; G = 0.5f; B = 0.0f; break;
-                case 9000:  R = 0.0f; G = 0.0f; B = 0.5f; break;
-                case 12000: R = 0.5f; G = 0.5f; B = 0.5f; break;
-                case 15000: R = 0.0f; G = 0.0f; B = 0.0f; counter = 0; break;
-                default: break;
-                }
-                upVKWin->m_VKClearValue[0].color.float32[0] = R;
-                upVKWin->m_VKClearValue[0].color.float32[1] = G;
-                upVKWin->m_VKClearValue[0].color.float32[2] = B;
-
                 upVKWin->createAndSetPipeline(trianglePipeline, pipelineLayout);
+
+                std::array<float, 2> winSize
+                {
+                    static_cast<float>(upVKWin->m_windowsWindow.getWidth()),
+                    static_cast<float>(upVKWin->m_windowsWindow.getHeight())
+                };
+                vkCmdPushConstants
+                (
+                    FCB, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, 
+                    static_cast<uint32_t>(winSize.size() * sizeof(float)),
+                    winSize.data()
+                );
                 vkCmdDraw(FCB, 3, 1, 0, 0);
 
-                // end of stuff
                 upVKWin->FrameEnd();
                 upVKWin->PageFlip();
             }

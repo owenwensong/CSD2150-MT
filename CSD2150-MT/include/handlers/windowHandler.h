@@ -56,6 +56,10 @@ public:
 
     bool createPipelineInfo(vulkanPipeline& outPipeline, VkShaderModule const& vertShader, VkShaderModule const& fragShader);
 
+    // DESCRIPTOR SETS
+
+    VkDescriptorSet createDescriptorSet(VkDescriptorSetAllocateInfo const& CreateInfo, VkDescriptorBufferInfo const& ConfigInfo);
+
 private:
     friend class Singleton;
     windowHandler& operator=(windowHandler const&) = delete;
