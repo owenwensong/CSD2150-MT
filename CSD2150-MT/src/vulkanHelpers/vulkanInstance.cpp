@@ -38,7 +38,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback
 vulkanInstance::vulkanInstance(bool enableDebugLayers, bool enableRenderDoc) :
 		m_VkHandle{ createVkInstance(enableDebugLayers, enableRenderDoc) },
 		m_pVKAllocator{ nullptr },
-		m_DebugMessenger{ nullptr },
+		m_DebugMessenger{ VK_NULL_HANDLE },
 		bValidation{ enableDebugLayers ? 1 : 0 },
 		bRenderDoc{ enableRenderDoc ? 1 : 0 }
 {

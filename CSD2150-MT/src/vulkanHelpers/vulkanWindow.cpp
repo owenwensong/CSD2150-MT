@@ -373,7 +373,7 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
 {
     // Preserve old swapchain to create the new one
     VkSwapchainKHR const VKOldSwapChain{ m_VKSwapchain };
-    m_VKSwapchain = nullptr;
+    m_VKSwapchain = VK_NULL_HANDLE;
 
     VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
 
