@@ -340,6 +340,16 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
 
 }
 
+void vulkanWindow::setFullscreen(bool fullscreenMode) noexcept
+{
+    m_windowsWindow.setFullscreen(fullscreenMode);
+}
+
+void vulkanWindow::toggleFullscreen() noexcept
+{
+    m_windowsWindow.setFullscreen(m_windowsWindow.m_bfFullscreen ? false : true);
+}
+
 void vulkanWindow::updateDefaultViewportAndScissor() noexcept
 {
     m_DefaultScissor.offset.x = 0;

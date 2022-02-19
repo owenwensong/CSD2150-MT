@@ -239,37 +239,13 @@ bool windowsWindow::createWindow(windowSetup const& Setup)
     if (m_hWindow != nullptr)return true; // window already exists
     HINSTANCE hInst{ GetModuleHandle(NULL) };
 
+    m_bfFullscreen = Setup.m_bFullscreen ? 1 : 0;
+
     m_windowedWidth = std::max(Setup.m_Width, minWindowSizeX);
     m_windowedHeight = std::max(Setup.m_Height, minWindowSizeY);
 
-    const int screenWidth{ GetSystemMetrics(SM_CXSCREEN) };
-    const int screenHeight{ GetSystemMetrics(SM_CYSCREEN) };
-
-    const DWORD windowStyle{ static_cast<DWORD>(Setup.m_bFullscreen ? FULL_STYLE_HELPER : WINDOWED_STYLE_HELPER) };
-    const DWORD windowExStyle{ static_cast<DWORD>(Setup.m_bFullscreen ? FULL_EX_STYLE_HELPER : WINDOWED_EX_STYLE_HELPER) };
-    // I assume EX_APPWINDOW_EDGE helps with window's fixed invisible borders
-
-    RECT windowRect;
-    if (Setup.m_bFullscreen)
-    {
-        windowRect.left = static_cast<decltype(windowRect.left)>(0);
-        windowRect.right = static_cast<decltype(windowRect.left)>(screenWidth);
-        windowRect.top = static_cast<decltype(windowRect.left)>(0);
-        windowRect.bottom = static_cast<decltype(windowRect.left)>(screenHeight);
-        m_Width = screenWidth;
-        m_Height = screenHeight;
-    }
-    else
-    {   // not messing with the math since integral division might make it off by 1px
-        windowRect.left = static_cast<decltype(windowRect.left)>(screenWidth / 2 - Setup.m_Width / 2);
-        windowRect.right = static_cast<decltype(windowRect.left)>(Setup.m_Width);
-        windowRect.top = static_cast<decltype(windowRect.left)>(screenHeight / 2 - Setup.m_Height / 2);
-        windowRect.bottom = static_cast<decltype(windowRect.left)>(Setup.m_Height);
-        m_Width = Setup.m_Width;    // maybe I should correct for the smaller 
-        m_Height = Setup.m_Height;  // size from calling AdjustWindowRectEx?
-    }
-
-    AdjustWindowRectEx(&windowRect, windowStyle, FALSE, windowExStyle);
+    const DWORD windowStyle{ m_bfFullscreen ? FULL_STYLE_HELPER : WINDOWED_STYLE_HELPER };
+    RECT windowRect{ getAdjustedRect() };
 
     m_hWindow = CreateWindow
     (
@@ -293,6 +269,76 @@ bool windowsWindow::createWindow(windowSetup const& Setup)
     //Menu = GetMenu(hWnd);// from my old window handler
 
     return true;
+}
+
+RECT windowsWindow::getAdjustedRect() noexcept
+{
+    const int screenWidth{ GetSystemMetrics(SM_CXSCREEN) };
+    const int screenHeight{ GetSystemMetrics(SM_CYSCREEN) };
+    RECT retval;
+    DWORD windowStyle, windowExStyle;
+    if (m_bfFullscreen)
+    {
+        retval.left = static_cast<decltype(retval.left)>(0);
+        retval.right = static_cast<decltype(retval.left)>(screenWidth);
+        retval.top = static_cast<decltype(retval.left)>(0);
+        retval.bottom = static_cast<decltype(retval.left)>(screenHeight);
+        m_Width = screenWidth;
+        m_Height = screenHeight;
+        windowStyle = FULL_STYLE_HELPER;
+        windowExStyle = FULL_EX_STYLE_HELPER;
+    }
+    else
+    {   // not messing with the math since integral division might make it off by 1px
+        retval.left = static_cast<decltype(retval.left)>(screenWidth / 2 - m_windowedWidth / 2);
+        retval.right = static_cast<decltype(retval.left)>(m_windowedWidth);
+        retval.top = static_cast<decltype(retval.left)>(screenHeight / 2 - m_windowedHeight / 2);
+        retval.bottom = static_cast<decltype(retval.left)>(m_windowedHeight);
+        m_Width = m_windowedWidth;    // maybe I should correct for the smaller 
+        m_Height = m_windowedHeight;  // size from calling AdjustWindowRectEx?
+        windowStyle = WINDOWED_STYLE_HELPER;
+        windowExStyle = WINDOWED_EX_STYLE_HELPER;
+    }
+    // I assume EX_APPWINDOW_EDGE helps with window's fixed invisible borders
+    AdjustWindowRectEx(&retval, windowStyle, FALSE, windowExStyle);
+
+    return retval;
+}
+
+void windowsWindow::setFullscreen(bool fullscreenMode) noexcept
+{
+    if (m_bfFullscreen == (fullscreenMode ? 1 : 0))return;// already as desired
+
+    // signed bitfields don't overflow to 0 :(
+    m_bfFullscreen = fullscreenMode ? 1 : 0;
+
+    RECT newWinRect{ getAdjustedRect() };
+    
+    // change window style to match
+    SetWindowLongPtr(m_hWindow, GWL_STYLE, m_bfFullscreen ? FULL_STYLE_HELPER : WINDOWED_STYLE_HELPER);
+
+    SetWindowPos
+    (
+        m_hWindow,
+        nullptr,
+        newWinRect.left,
+        newWinRect.top,
+        newWinRect.right,
+        newWinRect.bottom,
+        SWP_SHOWWINDOW
+    );
+
+    m_bfResized = true;
+}
+
+void windowsWindow::setWindowedWidth(int width) noexcept
+{
+    m_windowedWidth = width;
+}
+
+void windowsWindow::setWindowedHeight(int height) noexcept
+{
+    m_windowedHeight = height;
 }
 
 // *****************************************************************************

@@ -44,12 +44,20 @@ public:
 
     bool createWindow(windowSetup const& Setup);
 
+    void setFullscreen(bool fullscreenMode) noexcept;
+
+    void setWindowedWidth(int width) noexcept;
+
+    void setWindowedHeight(int height) noexcept;
+
 private:
 
     static constexpr int minWindowSizeX{ 800 };
     static constexpr int minWindowSizeY{ 600 };
 
     static bool registerWindowClass() noexcept;
+
+    RECT getAdjustedRect() noexcept;
     
 public:
 
@@ -57,11 +65,11 @@ public:
 
 private:
     HWND            m_hWindow       { nullptr };
-    int             m_windowedWidth { minWindowSizeX };
-    int             m_windowedHeight{ minWindowSizeY };
 
 public: // why is this needed so much by xgpu
 
+    int             m_windowedWidth { minWindowSizeX };
+    int             m_windowedHeight{ minWindowSizeY };
     int             m_Width         { 0 };
     int             m_Height        { 0 };
 

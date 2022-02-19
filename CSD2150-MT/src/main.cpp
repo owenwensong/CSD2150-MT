@@ -66,6 +66,8 @@ int main()
             win0Input.update();
             win0Input.debugPrint(0b0101);
 
+            if (win0Input.isTriggered(VK_F11))upVKWin->toggleFullscreen();
+
             // FCB stands for Frame Command Buffer, this frame's command buffer!
             if (VkCommandBuffer FCB{ upVKWin->FrameBegin() }; FCB != VK_NULL_HANDLE)
             {

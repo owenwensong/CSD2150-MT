@@ -51,6 +51,10 @@ public:
 
     // My own stuff, giving up on reading xGPU especially with only a few hours remaining
 
+    void setFullscreen(bool fullscreenMode) noexcept;
+
+    void toggleFullscreen() noexcept;
+
     /// @brief begin a frame, made similar to the way imgui does their calls,
     ///        must be called in order FrameBegin, FrameEnd, PageFlip
     ///        if FrameBegin returns false, don't end or pageFlip.
