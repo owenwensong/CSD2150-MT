@@ -60,6 +60,9 @@
     <ClCompile Include="src\windowsHelpers\windowsInput.cpp">
       <Filter>Source Files\windowsHelpers</Filter>
     </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\vulkanPipeline.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\utility\Singleton.h">
@@ -94,6 +97,9 @@
     </ClInclude>
     <ClInclude Include="include\windowsHelpers\windowsInput.h">
       <Filter>Header Files\windowsHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanPipeline.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -15,6 +15,7 @@
 #include <vulkanHelpers/vulkanInstance.h>
 #include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/vulkanWindow.h>
+#include <vulkanHelpers/vulkanPipeline.h>
 #include <vector>
 
 class windowHandler : public Singleton<windowHandler>
@@ -36,6 +37,24 @@ public:
 
     [[nodiscard("Don't throw away my window man")]]
     std::unique_ptr<vulkanWindow> createWindow(windowSetup const& Setup);
+
+    // SHADER MODULES
+
+    VkShaderModule createShaderModule(const char* relPath);
+
+    VkShaderModule createShaderModule(std::vector<char> const& code);
+
+    void destroyShaderModule(VkShaderModule& shaderModule);
+
+    // PIPELINE LAYOUTS
+
+    VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo const& CreateInfo);
+
+    void destroyPipelineLayout(VkPipelineLayout& pipelineLayout);
+
+    // PIPELINE INFO (CUSTOM)
+
+    bool createPipelineInfo(vulkanPipeline& outPipeline, VkShaderModule const& vertShader, VkShaderModule const& fragShader);
 
 private:
     friend class Singleton;

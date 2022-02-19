@@ -12,6 +12,7 @@
 
 #include <windowsHelpers/windowsWindow.h>
 #include <vulkanHelpers/vulkanDevice.h>
+#include <vulkanHelpers/vulkanPipeline.h>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include <memory>
@@ -53,15 +54,21 @@ public:
     /// @brief begin a frame, made similar to the way imgui does their calls,
     ///        must be called in order FrameBegin, FrameEnd, PageFlip
     ///        if FrameBegin returns false, don't end or pageFlip.
-    /// @return used to signal frame begin success, put frame end inside.
-    bool FrameBegin();
+    /// @return command buffer if frame begin success, to send commands
+    VkCommandBuffer FrameBegin();
 
     /// @brief submits queues
     void FrameEnd();
 
+    /// @brief swaps front and back buffer
     void PageFlip();
 
+    // any created will be stored to be auto destroyed
+    bool createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo, VkPipelineLayout pipelineLayout);
+
 private:
+
+    void updateDefaultViewportAndScissor() noexcept;
 
     bool CreateOrResizeWindow(/* Get width and height internally */) noexcept;
     bool CreateWindowSwapChain() noexcept;
@@ -70,6 +77,8 @@ private:
     bool CreateWindowCommandBuffers() noexcept;
 
     void DestroyRenderPass() noexcept;
+
+    void DestroyPipelines() noexcept;
 
 public: // all public, let whoever touch it /shrug
 
@@ -85,7 +94,9 @@ public: // all public, let whoever touch it /shrug
     VkImageView                         m_VKDepthbufferView     {};
     VkDeviceMemory                      m_VKDepthbufferMemory   {};
     VkRenderPass                        m_VKRenderPass          {};
-    VkPipeline                          m_VKPipeline            {};
+    //VkPipeline                          m_VKPipeline            {};
+    std::unordered_map<vulkanPipeline*, VkPipeline> m_VKPipelines{};
+    vulkanPipeline*                     m_pPipelineReference    { nullptr };// pointer used to create the current pipeline, used to not recreate if already in use
     VkSurfaceFormatKHR                  m_VKSurfaceFormat       {};
     VkFormat                            m_VKDepthFormat         {};
     VkPresentModeKHR                    m_VKPresentMode         {};

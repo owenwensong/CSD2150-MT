@@ -166,8 +166,7 @@ vulkanWindow::~vulkanWindow()
     }
     // Destroy render pass and pipeline
     DestroyRenderPass();
-
-    if (m_VKPipeline)vkDestroyPipeline(m_Device->m_VKDevice, m_VKPipeline, pAllocator);
+    DestroyPipelines();
 
     // Destroy the Swap Chain
     if (m_VKSwapchain)vkDestroySwapchainKHR(m_Device->m_VKDevice, m_VKSwapchain, pAllocator);
@@ -341,6 +340,20 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
 
 }
 
+void vulkanWindow::updateDefaultViewportAndScissor() noexcept
+{
+    m_DefaultScissor.offset.x = 0;
+    m_DefaultScissor.offset.y = 0;
+    m_DefaultScissor.extent.width = static_cast<uint32_t>(m_windowsWindow.getWidth());
+    m_DefaultScissor.extent.height = static_cast<uint32_t>(m_windowsWindow.getHeight());
+    m_DefaultViewport.width  = static_cast<float>(m_DefaultScissor.extent.width);
+    m_DefaultViewport.height = static_cast<float>(m_DefaultScissor.extent.height);
+    m_DefaultViewport.x      = 0.0f;
+    m_DefaultViewport.y      = 0.0f;
+    m_DefaultViewport.minDepth = 0.0f;
+    m_DefaultViewport.maxDepth = 1.0f;
+}
+
 bool vulkanWindow::CreateOrResizeWindow() noexcept
 {
    return CreateWindowSwapChain() && CreateWindowCommandBuffers();
@@ -380,10 +393,7 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
 
     // Destroy render pass and pipeline
     DestroyRenderPass();
-
-    if (m_VKPipeline)vkDestroyPipeline(m_Device->m_VKDevice, m_VKPipeline, pAllocator);
-    m_VKPipeline = VK_NULL_HANDLE;
-    // Pipeline destruction handled somewhere else ???????
+    DestroyPipelines();
 
     // Create the Swapchain
     {
@@ -802,9 +812,18 @@ void vulkanWindow::DestroyRenderPass() noexcept
     m_VKRenderPass = VK_NULL_HANDLE;
 }
 
-bool vulkanWindow::FrameBegin()
+void vulkanWindow::DestroyPipelines() noexcept
 {
-    if (m_windowsWindow.isMinimized())return false;
+    for (decltype(m_VKPipelines)::iterator i{ m_VKPipelines.begin() }, t{ m_VKPipelines.end() }; i != t; ++i)
+    {
+        vkDestroyPipeline(m_Device->m_VKDevice, i->second, m_Device->m_pVKInst->m_pVKAllocator);
+    }
+    m_VKPipelines.clear();
+}
+
+VkCommandBuffer vulkanWindow::FrameBegin()
+{
+    if (m_windowsWindow.isMinimized())return VK_NULL_HANDLE;
     // will fail if was not 0 before starting
     assert(!m_bfFrameBeginState && (m_bfFrameBeginState += 2));
 
@@ -888,12 +907,12 @@ bool vulkanWindow::FrameBegin()
     vkCmdBeginRenderPass(Frame.m_VKCommandBuffer, &RenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
     // set the default viewport
-    m_DefaultScissor.offset.x = 0;
-    m_DefaultScissor.offset.y = 0;
-    m_DefaultScissor.extent.width   = static_cast<uint32_t>(m_windowsWindow.getWidth());
-    m_DefaultScissor.extent.height  = static_cast<uint32_t>(m_windowsWindow.getHeight());
+    updateDefaultViewportAndScissor();
 
-    return true;
+    vkCmdSetScissor(Frame.m_VKCommandBuffer, 0, 1, &m_DefaultScissor);
+    vkCmdSetViewport(Frame.m_VKCommandBuffer, 0, 1, &m_DefaultViewport);
+
+    return Frame.m_VKCommandBuffer;
 }
 
 void vulkanWindow::FrameEnd()
@@ -980,5 +999,69 @@ void vulkanWindow::PageFlip()
 
     m_FrameIndex =      (++m_FrameIndex)     % m_ImageCount;
     m_SemaphoreIndex =  (++m_SemaphoreIndex) % m_ImageCount;
+
+}
+
+bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo, VkPipelineLayout pipelineLayout)
+{
+    if (pipelineLayout == VK_NULL_HANDLE)
+    {
+        printWarning("Cannot create pipeline with null pipelineLayout?"sv, true);
+        return false;
+    }
+
+    updateDefaultViewportAndScissor();
+
+    VkPipelineViewportStateCreateInfo viewportState
+    {
+        .sType{ VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO },
+        .viewportCount{ 1 },
+        .pViewports{ &m_DefaultViewport },
+        .scissorCount{ 1 },
+        .pScissors{ &m_DefaultScissor }
+    };
+
+    VkGraphicsPipelineCreateInfo CreateInfo
+    {
+        .sType{ VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO },
+        .stageCount         { static_cast<uint32_t>(pipelineCustomCreateInfo.m_ShaderStages.size()) },
+        .pStages            { pipelineCustomCreateInfo.m_ShaderStages.data() },
+        .pVertexInputState  { &pipelineCustomCreateInfo.m_VertexInputInfo },
+        .pInputAssemblyState{ &pipelineCustomCreateInfo.m_InputAssembly },
+        .pViewportState     { &viewportState },
+        .pRasterizationState{ &pipelineCustomCreateInfo.m_Rasterizer },
+        .pMultisampleState  { &pipelineCustomCreateInfo.m_Multisampling },
+        .pDepthStencilState { &pipelineCustomCreateInfo.m_DepthStencilState },
+        .pColorBlendState   { &pipelineCustomCreateInfo.m_ColorBlending },
+        .pDynamicState      { &pipelineCustomCreateInfo.m_DynamicStateCreateInfo },
+        .layout             { pipelineLayout },
+        .renderPass         { m_VKRenderPass },
+        .subpass            { 0 },
+        .basePipelineHandle { VK_NULL_HANDLE },
+        .basePipelineIndex  { -1 }
+    };
+
+    VkPipeline pipelineToSet{ VK_NULL_HANDLE };
+
+    if (decltype(m_VKPipelines)::iterator found{ m_VKPipelines.find(&pipelineCustomCreateInfo) }; found != m_VKPipelines.end())
+    {
+        pipelineToSet = found->second;
+    }
+    else
+    {
+        if (VkResult tmpRes{ vkCreateGraphicsPipelines(m_Device->m_VKDevice, m_Device->m_VKPipelineCache, 1, &CreateInfo, m_Device->m_pVKInst->m_pVKAllocator, &pipelineToSet) }; tmpRes != VK_SUCCESS || pipelineToSet == VK_NULL_HANDLE)
+        {
+            printVKWarning(tmpRes, "Failed to create a pipeline!"sv, true);
+            return false;
+        }
+        m_VKPipelines.emplace(&pipelineCustomCreateInfo, pipelineToSet);
+    }
+
+    auto& Frame{ m_Frames[m_FrameIndex] };
+
+    // Bind pipeline
+    vkCmdBindPipeline(Frame.m_VKCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToSet);
+
+    return true;
 
 }
