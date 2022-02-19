@@ -67,7 +67,6 @@ int main()
             pipelineLayout == VK_NULL_HANDLE)
         {
             printWarning("pipeline prep failed"sv, true);
-            
         }
         else while (pWH->processInputEvents())
         {
@@ -93,7 +92,6 @@ int main()
         pWH->destroyPipelineLayout(pipelineLayout);
         pWH->destroyShaderModule(vertShader);
         pWH->destroyShaderModule(fragShader);
-
     }
 
     return 0;
