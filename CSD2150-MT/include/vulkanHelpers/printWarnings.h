@@ -16,6 +16,7 @@
 
 #pragma warning (disable: 26812)// seriously shut up about enums
 
+//using std::string_view_literals::operator""sv;// produces warning C4455 due to compiler bug
 using namespace std::string_view_literals;	// for literal operator sv
 
 std::string_view VKErrorToString(VkResult errCode) noexcept;
