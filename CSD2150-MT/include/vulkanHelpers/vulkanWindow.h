@@ -68,7 +68,7 @@ public:
     void PageFlip();
 
     // any created will be stored to be auto destroyed
-    bool createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo, VkPipelineLayout pipelineLayout);
+    bool createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo);
 
 private:
 

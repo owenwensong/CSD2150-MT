@@ -54,7 +54,8 @@ public:
 
     // PIPELINE INFO (CUSTOM)
 
-    bool createPipelineInfo(vulkanPipeline& outPipeline, VkShaderModule const& vertShader, VkShaderModule const& fragShader);
+    bool createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
+    void destroyPipelineInfo(vulkanPipeline& inPipeline);
 
     // DESCRIPTOR SETS
 

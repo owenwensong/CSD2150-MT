@@ -1012,9 +1012,9 @@ void vulkanWindow::PageFlip()
 
 }
 
-bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo, VkPipelineLayout pipelineLayout)
+bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo)
 {
-    if (pipelineLayout == VK_NULL_HANDLE)
+    if (pipelineCustomCreateInfo.m_PipelineLayout == VK_NULL_HANDLE)
     {
         printWarning("Cannot create pipeline with null pipelineLayout?"sv, true);
         return false;
@@ -1044,7 +1044,7 @@ bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo
         .pDepthStencilState { &pipelineCustomCreateInfo.m_DepthStencilState },
         .pColorBlendState   { &pipelineCustomCreateInfo.m_ColorBlending },
         .pDynamicState      { &pipelineCustomCreateInfo.m_DynamicStateCreateInfo },
-        .layout             { pipelineLayout },
+        .layout             { pipelineCustomCreateInfo.m_PipelineLayout },
         .renderPass         { m_VKRenderPass },
         .subpass            { 0 },
         .basePipelineHandle { VK_NULL_HANDLE },
