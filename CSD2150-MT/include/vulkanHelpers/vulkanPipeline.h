@@ -31,8 +31,28 @@ struct vulkanPipeline
     };
   }
   
+  enum class E_VERTEX_BINDING_MODE
+  {
+    UNDEFINED,
+
+    AOS_XY_RGB_F32,
+    AOS_XY_RGBA_F32,
+    AOS_XYZ_RGB_F32,
+    AOS_XYZ_RGBA_F32,
+    
+    // maybe support SOA next time
+    //SOA_XY_RGB_F32,
+    //SOA_XY_RGBA_F32,
+    //SOA_XYZ_RGB_F32,
+    //SOA_XYZ_RGBA_F32
+  };
+
   struct setup
   {
+    // vertex input data
+    E_VERTEX_BINDING_MODE m_VertexBindingMode{ E_VERTEX_BINDING_MODE::UNDEFINED };
+
+    // shader paths
     std::string_view m_PathShaderVert{  };
     std::string_view m_PathShaderFrag{  };
     
@@ -44,23 +64,25 @@ struct vulkanPipeline
   };
 
   // moved in, dangerous... keep track of allocations maybe?
-  VkShaderModule                                  m_ShaderVert        { VK_NULL_HANDLE };
-  VkShaderModule                                  m_ShaderFrag        { VK_NULL_HANDLE };
-  VkPipelineLayout                                m_PipelineLayout    { VK_NULL_HANDLE };
+  VkShaderModule                                    m_ShaderVert          { VK_NULL_HANDLE };
+  VkShaderModule                                    m_ShaderFrag          { VK_NULL_HANDLE };
+  VkPipelineLayout                                  m_PipelineLayout      { VK_NULL_HANDLE };
 
-  std::array<VkPipelineShaderStageCreateInfo, 2>  m_ShaderStages      {};
-  VkPipelineVertexInputStateCreateInfo            m_VertexInputInfo   {};
-  VkPipelineInputAssemblyStateCreateInfo          m_InputAssembly     {};
+  std::array<VkPipelineShaderStageCreateInfo, 2>    m_ShaderStages        {};
+  std::array<VkVertexInputBindingDescription, 1>    m_BindingDescription  {};
+  std::array<VkVertexInputAttributeDescription, 2>  m_AttributeDescription{};
+  VkPipelineVertexInputStateCreateInfo              m_VertexInputInfo     {};
+  VkPipelineInputAssemblyStateCreateInfo            m_InputAssembly       {};
   // viewport will be taken from window when applying this pipeline
   // scissor too
   // pipelineviewportstatecreateinfo made on the spot when time comes
-  VkPipelineRasterizationStateCreateInfo          m_Rasterizer        {};
-  VkPipelineMultisampleStateCreateInfo            m_Multisampling     {};
-  VkPipelineDepthStencilStateCreateInfo           m_DepthStencilState {};
-  VkPipelineColorBlendAttachmentState             m_ColorBlendAttachment  {};
-  VkPipelineColorBlendStateCreateInfo             m_ColorBlending     {};
-  std::array<VkDynamicState, 2>                   m_DynamicStates     {};
-  VkPipelineDynamicStateCreateInfo                m_DynamicStateCreateInfo{};
+  VkPipelineRasterizationStateCreateInfo            m_Rasterizer          {};
+  VkPipelineMultisampleStateCreateInfo              m_Multisampling       {};
+  VkPipelineDepthStencilStateCreateInfo             m_DepthStencilState   {};
+  VkPipelineColorBlendAttachmentState               m_ColorBlendAttachment{};
+  VkPipelineColorBlendStateCreateInfo               m_ColorBlending       {};
+  std::array<VkDynamicState, 2>                     m_DynamicStates       {};
+  VkPipelineDynamicStateCreateInfo                  m_DynamicStateCreateInfo{};
 };
 
 #endif//VULKAN_PIPELINE_HELPER_HEADER

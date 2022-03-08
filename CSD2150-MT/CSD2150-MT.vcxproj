@@ -165,9 +165,11 @@
   <ItemGroup>
     <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\utility\matrixTransforms.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp" />
+    <ClCompile Include="src\vulkanHelpers\vulkanModel.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanPipeline.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanWindow.cpp" />
     <ClCompile Include="src\windowsHelpers\windowsInput.cpp" />
@@ -175,13 +177,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\handlers\windowHandler.h" />
+    <ClInclude Include="include\utility\matrixTransforms.h" />
     <ClInclude Include="include\utility\lockableObject.hpp" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
+    <ClInclude Include="include\utility\vertices.h" />
     <ClInclude Include="include\utility\windowsInclude.h" />
     <ClInclude Include="include\vulkanHelpers\printWarnings.h" />
+    <ClInclude Include="include\vulkanHelpers\vulkanBuffer.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanDevice.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanInstance.h" />
+    <ClInclude Include="include\vulkanHelpers\vulkanModel.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanPipeline.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanWindow.h" />
     <ClInclude Include="include\windowsHelpers\windowsInput.h" />

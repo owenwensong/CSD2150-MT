@@ -34,6 +34,9 @@
     <Filter Include="Source Files\windowsHelpers">
       <UniqueIdentifier>{c12907a2-f5f3-4c9e-86ff-1480c92c07e4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\utility">
+      <UniqueIdentifier>{ba60f054-84d1-4e20-bbd7-1d495e405372}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -62,6 +65,12 @@
     </ClCompile>
     <ClCompile Include="src\vulkanHelpers\vulkanPipeline.cpp">
       <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\vulkanHelpers\vulkanModel.cpp">
+      <Filter>Source Files\vulkanHelpers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\utility\matrixTransforms.cpp">
+      <Filter>Source Files\utility</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -100,6 +109,18 @@
     </ClInclude>
     <ClInclude Include="include\vulkanHelpers\vulkanPipeline.h">
       <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanModel.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\vulkanBuffer.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility\vertices.h">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility\matrixTransforms.h">
+      <Filter>Header Files\utility</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

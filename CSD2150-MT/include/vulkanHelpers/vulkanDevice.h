@@ -27,6 +27,8 @@ public:
     vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst);
     ~vulkanDevice();
 
+    void waitForDeviceIdle();
+
     bool getMemoryType(uint32_t TypeBits, const VkFlags Properties, uint32_t& TypeIndex) const noexcept;
 
     std::shared_ptr<vulkanInstance>& getVKInst();
@@ -49,6 +51,7 @@ public: // just realease it... I don't know why everything must touch each other
     VkDeviceSize                        m_BufferMemoryAlignment{ 256 };
     VkPhysicalDeviceProperties          m_VKPhysicalDeviceProperties{};
     lockableObject<VkDescriptorPool>    m_LockedVKDescriptorPool{};
+    VkCommandPool                       m_TransferCommandPool{};
 
     using bitfield = intptr_t;  // bitfield size match ptr size
 

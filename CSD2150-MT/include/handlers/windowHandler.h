@@ -16,6 +16,7 @@
 #include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/vulkanWindow.h>
 #include <vulkanHelpers/vulkanPipeline.h>
+#include <vulkanHelpers/vulkanBuffer.h>
 #include <vector>
 
 class windowHandler : public Singleton<windowHandler>
@@ -57,9 +58,16 @@ public:
     bool createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
     void destroyPipelineInfo(vulkanPipeline& inPipeline);
 
-    // DESCRIPTOR SETS
+    // Buffers
 
-    VkDescriptorSet createDescriptorSet(VkDescriptorSetAllocateInfo const& CreateInfo, VkDescriptorBufferInfo const& ConfigInfo);
+    /// @brief write into a staging buffer (must have host visible and host coherent bits set)
+    /// @param dstBuffer destination buffer
+    /// @param srcData data source
+    /// @param srcLen length of the data to write to the buffer
+    /// @return true if the write is successful, false otherwise
+    bool writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDeviceSize srcLen);
+    bool createBuffer(vulkanBuffer& outBuffer, vulkanBuffer::Setup const& inSetup);
+    void destroyBuffer(vulkanBuffer& inBuffer);
 
 private:
     friend class Singleton;
@@ -68,6 +76,15 @@ private:
 private:
 
     windowHandler(size_t flagOptions);
+
+    /// @brief copy from a staging buffer to another buffer
+    /// @param dstBuffer destination buffer (must have destination bit set)
+    /// @param srcBuffer source buffer (must have source bit set)
+    /// @param cpySize size of data to be copied
+    /// @return true if copy successful, false otherwise
+    bool copyBuffer(vulkanBuffer& dstBuffer, vulkanBuffer& srcBuffer, VkDeviceSize cpySize);
+
+    bool setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
 
     std::shared_ptr<vulkanInstance> m_pVKInst;  // shared so stuff can depend on it
     std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst

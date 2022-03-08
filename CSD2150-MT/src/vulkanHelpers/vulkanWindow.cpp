@@ -377,11 +377,7 @@ bool vulkanWindow::CreateWindowSwapChain() noexcept
 
   VkAllocationCallbacks* pAllocator{ m_Device->m_pVKInst->m_pVKAllocator };
 
-  if (VkResult tmpRes{ vkDeviceWaitIdle(m_Device->m_VKDevice) }; tmpRes != VK_SUCCESS)
-  {
-    printVKWarning(tmpRes, "Failed to wait for device", true);
-    // ???? Pretend there was no error ????
-  }
+  m_Device->waitForDeviceIdle();
 
   // Destroy old Framebuffer
   if (m_Frames.get())
@@ -840,7 +836,7 @@ VkCommandBuffer vulkanWindow::FrameBegin()
   // resize the window if needed
   if (m_windowsWindow.isResized())
   {
-    vkDeviceWaitIdle(m_Device->m_VKDevice);
+    m_Device->waitForDeviceIdle();
     CreateOrResizeWindow();// error strings alr printed here
     m_windowsWindow.resetResized();
   }
