@@ -15,7 +15,6 @@
 
 namespace MTU // MT Utility
 {
-  glm::mat4 view(float width, float height) noexcept;
   glm::mat3 axisAngleRotation(glm::vec3 rotAxis, float rotRad, glm::mat3* invMat) noexcept;
 }
 

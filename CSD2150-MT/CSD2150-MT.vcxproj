@@ -170,7 +170,6 @@
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanModel.cpp" />
-    <ClCompile Include="src\vulkanHelpers\vulkanPipeline.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanWindow.cpp" />
     <ClCompile Include="src\windowsHelpers\windowsInput.cpp" />
     <ClCompile Include="src\windowsHelpers\windowsWindow.cpp" />

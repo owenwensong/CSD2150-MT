@@ -16,5 +16,6 @@ struct VTX_2D_RGB   { glm::vec2 m_Pos; glm::vec3 m_Col; };
 struct VTX_2D_RGBA  { glm::vec2 m_Pos; glm::vec4 m_Col; };
 struct VTX_3D_RGB   { glm::vec3 m_Pos; glm::vec3 m_Col; };
 struct VTX_3D_RGBA  { glm::vec3 m_Pos; glm::vec4 m_Col; };
+// todo: add VTX_XD_UV_XXXX
 
 #endif//UTILITY_VERTICES_HELPER_HEADER

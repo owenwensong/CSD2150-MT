@@ -370,5 +370,11 @@ void windowsInput::updateCursorPos(int cX, int cY) noexcept
     cursorYAccumulate = /*static_cast<decltype(cursorYAccumulate)>(*/cY/*)*/;
 }
 
+void windowsInput::getCursorPos(int& cX, int& cY) noexcept
+{
+  cX = cursorXCurrent;
+  cY = cursorYCurrent;
+}
+
 // *****************************************************************************
 

@@ -10,19 +10,9 @@
 
 #include <utility/matrixTransforms.h>
 
-glm::mat4 MTU::view(float width, float height) noexcept
-{
-  width *= 0.5f;
-  height *= 0.5f;
-  return glm::mat4
-  {
-    width, 0.0f,   0.0f, 0.0f, 
-    0.0f,  height, 0.0f, 0.0f,
-    0.0f,  0.0f,   0.5f, 0.0f,
-    width, height, 0.5f, 1.0f
-  };
-}
-
+// based on a previous semi-optimized implementation I made. the invMat output 
+// may be useful if you need to bring something to model space for some reason.
+// It was previously used to bring point lights to model space.
 glm::mat3 MTU::axisAngleRotation(glm::vec3 rotAxis, float rotRad, glm::mat3* invMat) noexcept
 {
   rotAxis = glm::normalize(rotAxis);

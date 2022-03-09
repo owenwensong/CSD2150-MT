@@ -63,9 +63,6 @@
     <ClCompile Include="src\windowsHelpers\windowsInput.cpp">
       <Filter>Source Files\windowsHelpers</Filter>
     </ClCompile>
-    <ClCompile Include="src\vulkanHelpers\vulkanPipeline.cpp">
-      <Filter>Source Files\vulkanHelpers</Filter>
-    </ClCompile>
     <ClCompile Include="src\vulkanHelpers\vulkanModel.cpp">
       <Filter>Source Files\vulkanHelpers</Filter>
     </ClCompile>

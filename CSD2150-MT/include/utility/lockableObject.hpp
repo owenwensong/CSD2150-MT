@@ -81,6 +81,7 @@ void lockableObject<T>::unlock() noexcept
 {
     LOCKABLE_DEBUG_ONLY(assert(m_Locked));
     LOCKABLE_DEBUG_ONLY(m_Locked = false);
+#pragma warning (suppress : 26110)
     m_Mutex.unlock();   // weird warning C26110. Sounds like a false positive to me from std::scoped_lock but I can't be sure.
 }
 

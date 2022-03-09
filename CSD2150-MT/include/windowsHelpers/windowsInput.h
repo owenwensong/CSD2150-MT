@@ -94,6 +94,11 @@ public:
     /// @param cY Y position relative to upper-left corner of the client area
     void updateCursorPos(int cX, int cY) noexcept;
 
+    /// @brief get the current frame cursor position
+    /// @param cX output for X
+    /// @param cY output for Y
+    void getCursorPos(int& cX, int& cY) noexcept;
+
 private:
 
     // various unused/reserved/niche keys but whatever

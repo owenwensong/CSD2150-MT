@@ -250,24 +250,24 @@ bool windowHandler::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeli
     .depthCompareOp{ VK_COMPARE_OP_LESS_OR_EQUAL },
     .depthBoundsTestEnable{ VK_TRUE },	// make this an option next time?
     .stencilTestEnable{ VK_TRUE },			// make this an option next time?
-    .front	// NO IDEA IF ANY OF THESE ARE CORRECT
-    {
-      .failOp{ VK_STENCIL_OP_KEEP },
-      .passOp{ VK_STENCIL_OP_KEEP },
-      .depthFailOp{ VK_STENCIL_OP_KEEP },
-      .compareOp{ VK_COMPARE_OP_ALWAYS },
-      .compareMask{ ~0u },
-      .reference{ 0u }// is an integer reference value that is used in the unsigned stencil comparison
-    },
-    .back	// NO IDEA IF ANY OF THESE ARE CORRECT
-    {
-      .failOp{ VK_STENCIL_OP_KEEP },
-      .passOp{ VK_STENCIL_OP_KEEP },
-      .depthFailOp{ VK_STENCIL_OP_KEEP },
-      .compareOp{ VK_COMPARE_OP_ALWAYS },
-      .compareMask{ ~0u },
-      .reference{ 0u }// is an integer reference value that is used in the unsigned stencil comparison
-    },
+    //.front	// NO IDEA IF ANY OF THESE ARE CORRECT
+    //{
+    //  .failOp{ VK_STENCIL_OP_KEEP },
+    //  .passOp{ VK_STENCIL_OP_KEEP },
+    //  .depthFailOp{ VK_STENCIL_OP_KEEP },
+    //  .compareOp{ VK_COMPARE_OP_ALWAYS },
+    //  .compareMask{ ~0u },
+    //  .reference{ 0u }// is an integer reference value that is used in the unsigned stencil comparison
+    //},
+    //.back	// NO IDEA IF ANY OF THESE ARE CORRECT
+    //{
+    //  .failOp{ VK_STENCIL_OP_KEEP },
+    //  .passOp{ VK_STENCIL_OP_KEEP },
+    //  .depthFailOp{ VK_STENCIL_OP_KEEP },
+    //  .compareOp{ VK_COMPARE_OP_ALWAYS },
+    //  .compareMask{ ~0u },
+    //  .reference{ 0u }// is an integer reference value that is used in the unsigned stencil comparison
+    //},
     .minDepthBounds{ 0.0f },
     .maxDepthBounds{ 1.0f }
   };
@@ -323,7 +323,7 @@ void windowHandler::destroyPipelineInfo(vulkanPipeline& inPipeline)
 bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDeviceSize srcLen)
 {
   assert(srcData);  // not much time to think, just assert it
-  assert(srcLen <= dstBuffer.m_Settings.m_Count * dstBuffer.m_Settings.m_ElemSize);
+  assert(srcLen <= static_cast<decltype(srcLen)>(dstBuffer.m_Settings.m_Count) * static_cast<decltype(srcLen)>(dstBuffer.m_Settings.m_ElemSize));
   
   vulkanBuffer stagingBuffer;
   if (false == 
@@ -350,7 +350,7 @@ bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDevi
     printVKWarning(tmpRes, "Failed to map staging buffer"sv, true);
     return false;
   }
-  std::memcpy(dstData, srcData, srcLen);
+  std::memcpy(dstData, srcData, static_cast<size_t>(srcLen));
   vkUnmapMemory(m_pVKDevice->m_VKDevice, stagingBuffer.m_BufferMemory);
 
   bool retval{ copyBuffer(dstBuffer, stagingBuffer, srcLen) };
