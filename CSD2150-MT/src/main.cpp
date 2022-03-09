@@ -16,6 +16,7 @@
 #include <vulkanHelpers/vulkanModel.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <utility/matrixTransforms.h>
+#include <utility/Timer.h>
 
 struct originCamera  // struct just for this implementation always facing origin
 {
@@ -281,9 +282,9 @@ int main()
           exampleModel.draw(FCB);
         }
         { // Rotating box object
-          static float boxRot{ 0.0f };
-          boxRot += 0.00048828125f;// lazy frame dependant rotation
-          if (boxRot >= glm::two_pi<float>())boxRot -= glm::two_pi<float>();
+          static MTU::Timer lazyTimer{ MTU::Timer::getCurrentTP() };// force start the static timer since I'm lazy
+          lazyTimer.stop();// lap the timer, doesn't actually stop it
+          float boxRot{ static_cast<float>(lazyTimer.getElapsedCount()) / MTU::Timer::clockFrequency };// ~6s/Rotation
           // axis angle rotation, so facing straight down (relative to up) will get CW 
           glm::mat3 tmpform{ MTU::axisAngleRotation(-cam.s_Up, boxRot, nullptr) };
           glm::mat4 xform

@@ -166,6 +166,7 @@
     <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\utility\matrixTransforms.cpp" />
+    <ClCompile Include="src\utility\Timer.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanInstance.cpp" />
@@ -180,6 +181,7 @@
     <ClInclude Include="include\utility\lockableObject.hpp" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
+    <ClInclude Include="include\utility\Timer.h" />
     <ClInclude Include="include\utility\vertices.h" />
     <ClInclude Include="include\utility\windowsInclude.h" />
     <ClInclude Include="include\vulkanHelpers\printWarnings.h" />
