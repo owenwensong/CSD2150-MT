@@ -23,8 +23,8 @@ struct originCamera  // struct just for this implementation always facing origin
   float     m_Dist;
   glm::vec2 m_Rot;
 
-  glm::mat4 m_W2V;
   glm::mat4 m_LookMat;
+  glm::mat4 m_W2V;
 
   glm::ivec2 m_CursorPrev;
 
@@ -38,11 +38,17 @@ struct originCamera  // struct just for this implementation always facing origin
   static const glm::vec3 s_Up;
 };
 
+glm::mat4 flippedYver(glm::mat4&& inMat) noexcept
+{
+  inMat[1] = -inMat[1];
+  return inMat;
+}
+
 // nextafter only constexpr after C++23
 const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0f) };
 const float originCamera::s_RotYMax{ std::nextafterf( glm::half_pi<float>(), 0.0f) };
 const glm::vec3 originCamera::s_Tgt{ 0.0f, 0.0f, 0.0f };
-const glm::vec3 originCamera::s_Up{ 0.0f, -1.0f, 0.0f };
+const glm::vec3 originCamera::s_Up{ 0.0f, 1.0f, 0.0f };
 
 // wanted to use DPML, but probably not allowed since can't pull it from git
 vulkanModel createHW2Model()
@@ -221,17 +227,25 @@ int main()
       // *******************************************************************
       // ****************************************** CAMERA UPDATE BEGIN ****
 
+      float AR{ static_cast<float>(upVKWin->m_windowsWindow.getWidth()) / upVKWin->m_windowsWindow.getHeight() };
+
       static originCamera cam
       {
         .m_Dist       { 2.0f },
         .m_Rot        { 0.0f, 0.0f },
-        .m_LookMat    
+        .m_LookMat
         {
           glm::lookAt(glm::vec3{ cam.m_Dist, 0.0f, 0.0f }, cam.s_Tgt, cam.s_Up)
+        },
+        .m_W2V
+        {
+          flippedYver
+          (
+            glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
+            cam.m_LookMat
+          )
         }
       };
-
-      float AR{ static_cast<float>(upVKWin->m_windowsWindow.getWidth()) / upVKWin->m_windowsWindow.getHeight() };
 
       glm::ivec2 cursorCurr;
       win0Input.getCursorPos(cursorCurr.x, cursorCurr.y);
@@ -240,8 +254,8 @@ int main()
         // update cam rotation based on cursor delta (speed based on pixels)
         glm::vec2 cursorDelta{ (cursorCurr - cam.m_CursorPrev) };
         cursorDelta *= 0.0078125f;
-        cam.m_Rot.x += cursorDelta.x;
-        cam.m_Rot.y = glm::clamp(cam.m_Rot.y + cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
+        cam.m_Rot.x -= cursorDelta.x;
+        cam.m_Rot.y = glm::clamp(cam.m_Rot.y - cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
         
         // update cam distance from origin based on scroll
         cam.m_Dist = glm::clamp(cam.m_Dist - 0.25f * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
@@ -254,15 +268,15 @@ int main()
         };
 
         cam.m_LookMat = glm::lookAt(camPos, cam.s_Tgt, cam.s_Up);
+
+        // update W2V matrix
+        cam.m_W2V = flippedYver
+        (
+          glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
+          cam.m_LookMat
+        );
       }
       cam.m_CursorPrev = cursorCurr;
-      
-      // update W2V matrix
-      cam.m_W2V = 
-      (
-        glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
-        cam.m_LookMat
-      );
 
       // ******************************************** CAMERA UPDATE END ****
       // *******************************************************************
