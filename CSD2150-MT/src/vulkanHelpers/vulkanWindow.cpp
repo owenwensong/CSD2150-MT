@@ -357,9 +357,9 @@ void vulkanWindow::updateDefaultViewportAndScissor() noexcept
   m_DefaultScissor.extent.width = static_cast<uint32_t>(m_windowsWindow.getWidth());
   m_DefaultScissor.extent.height = static_cast<uint32_t>(m_windowsWindow.getHeight());
   m_DefaultViewport.width = static_cast<float>(m_DefaultScissor.extent.width);
-  m_DefaultViewport.height = static_cast<float>(m_DefaultScissor.extent.height);
+  m_DefaultViewport.height = -static_cast<float>(m_DefaultScissor.extent.height);
   m_DefaultViewport.x = 0.0f;
-  m_DefaultViewport.y = 0.0f;
+  m_DefaultViewport.y = static_cast<float>(m_DefaultScissor.extent.height);
   m_DefaultViewport.minDepth = 0.0f;
   m_DefaultViewport.maxDepth = 1.0f;
 }

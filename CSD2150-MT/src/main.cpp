@@ -38,12 +38,6 @@ struct originCamera  // struct just for this implementation always facing origin
   static const glm::vec3 s_Up;
 };
 
-glm::mat4 flippedYver(glm::mat4&& inMat) noexcept
-{
-  inMat[1] = -inMat[1];
-  return inMat;
-}
-
 // nextafter only constexpr after C++23
 const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0f) };
 const float originCamera::s_RotYMax{ std::nextafterf( glm::half_pi<float>(), 0.0f) };
@@ -239,11 +233,8 @@ int main()
         },
         .m_W2V
         {
-          flippedYver
-          (
-            glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
-            cam.m_LookMat
-          )
+          glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far)*
+          cam.m_LookMat
         }
       };
 
@@ -255,7 +246,7 @@ int main()
         glm::vec2 cursorDelta{ (cursorCurr - cam.m_CursorPrev) };
         cursorDelta *= 0.0078125f;
         cam.m_Rot.x -= cursorDelta.x;
-        cam.m_Rot.y = glm::clamp(cam.m_Rot.y - cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
+        cam.m_Rot.y = glm::clamp(cam.m_Rot.y + cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
         
         // update cam distance from origin based on scroll
         cam.m_Dist = glm::clamp(cam.m_Dist - 0.25f * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
@@ -270,7 +261,7 @@ int main()
         cam.m_LookMat = glm::lookAt(camPos, cam.s_Tgt, cam.s_Up);
 
         // update W2V matrix
-        cam.m_W2V = flippedYver
+        cam.m_W2V = 
         (
           glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
           cam.m_LookMat
@@ -299,8 +290,7 @@ int main()
           static MTU::Timer lazyTimer{ MTU::Timer::getCurrentTP() };// force start the static timer since I'm lazy
           lazyTimer.stop();// lap the timer, doesn't actually stop it
           float boxRot{ static_cast<float>(lazyTimer.getElapsedCount()) / MTU::Timer::clockFrequency };// ~6s/Rotation
-          // axis angle rotation, so facing straight down (relative to up) will get CW 
-          glm::mat3 tmpform{ MTU::axisAngleRotation(-cam.s_Up, boxRot, nullptr) };
+          glm::mat3 tmpform{ MTU::axisAngleRotation(cam.s_Up, boxRot, nullptr) };
           glm::mat4 xform
           {
             glm::vec4{ tmpform[0], 0.0f },

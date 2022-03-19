@@ -107,6 +107,9 @@ VkInstance vulkanInstance::createVkInstance(bool enableDebugLayers, bool enableR
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 		};
 
+		// only VK 1.0 needs maintenance1 to use negative viewport
+		if (vkAppInfo.apiVersion == VK_VERSION_1_0)Extensions.emplace_back(VK_KHR_MAINTENANCE1_EXTENSION_NAME);
+
 		std::vector<const char*> Layers;
 		if (enableDebugLayers)
 		{
