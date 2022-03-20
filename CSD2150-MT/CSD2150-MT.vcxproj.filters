@@ -72,6 +72,9 @@
     <ClCompile Include="src\utility\Timer.cpp">
       <Filter>Source Files\utility</Filter>
     </ClCompile>
+    <ClCompile Include="src\utility\OBJLoader.cpp">
+      <Filter>Source Files\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\utility\Singleton.h">
@@ -123,6 +126,12 @@
       <Filter>Header Files\utility</Filter>
     </ClInclude>
     <ClInclude Include="include\utility\Timer.h">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility\OBJLoader.h">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility\CStrHash.hpp">
       <Filter>Header Files\utility</Filter>
     </ClInclude>
   </ItemGroup>

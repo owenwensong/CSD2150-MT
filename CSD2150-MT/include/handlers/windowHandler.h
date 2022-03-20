@@ -65,7 +65,7 @@ public:
     /// @param srcData data source
     /// @param srcLen length of the data to write to the buffer
     /// @return true if the write is successful, false otherwise
-    bool writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDeviceSize srcLen);
+    bool writeToBuffer(vulkanBuffer& dstBuffer, std::vector<void*> const& srcs, std::vector<VkDeviceSize> const& srcLens);
     bool createBuffer(vulkanBuffer& outBuffer, vulkanBuffer::Setup const& inSetup);
     void destroyBuffer(vulkanBuffer& inBuffer);
 

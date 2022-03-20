@@ -16,6 +16,7 @@
 #include <vulkanHelpers/vulkanModel.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <utility/matrixTransforms.h>
+#include <utility/OBJLoader.h>
 #include <utility/Timer.h>
 
 struct originCamera  // struct just for this implementation always facing origin
@@ -50,74 +51,32 @@ vulkanModel createHW2Model()
   vulkanModel retval{ .m_IndexType{ VK_INDEX_TYPE_UINT16 } };
   if (windowHandler* pWH{ windowHandler::getPInstance() }; pWH != nullptr)
   {
-    // shared vertices version
-    //std::array vertices
-    //{
-    //  VTX_3D_RGB{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-    //  VTX_3D_RGB{ {  0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-    //  VTX_3D_RGB{ {  0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f } },
-    //  VTX_3D_RGB{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 1.0f } },
-    //  VTX_3D_RGB{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
-    //  VTX_3D_RGB{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 1.0f } },
-    //  VTX_3D_RGB{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
-    //  VTX_3D_RGB{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
-    //};
 
-    //std::array<uint16_t, 36> indices
-    //{
-    //  0, 1, 3, 3, 1, 2,
-    //  1, 5, 2, 2, 5, 6,
-    //  5, 4, 6, 6, 4, 7,
-    //  4, 0, 7, 7, 0, 3, 
-    //  3, 2, 7, 7, 2, 6,
-    //  4, 5, 0, 0, 5, 1
-    //};
-
-    std::array vertices
+    MTU::OBJOutputs parsedOBJ;
+    if (std::ifstream ifs{ "../Assets/Meshes/cube.obj" }; false == MTU::loadOBJ(ifs, parsedOBJ, MTU::OBJLoadSettings{ .m_bLoadNormals{ false }, .m_bLoadTexCoords{ true } }))
     {
-      // Front face
-      VTX_3D_RGB{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-      VTX_3D_RGB{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-      VTX_3D_RGB{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f } },
-      // Back face
-      VTX_3D_RGB{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 0.5f } },
-      VTX_3D_RGB{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 0.5f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f, 0.5f } },
-      VTX_3D_RGB{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f, 0.5f } },
-      // Top face
-      VTX_3D_RGB{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-      VTX_3D_RGB{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 1.0f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f } },
-      // Bottom face
-      VTX_3D_RGB{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.5f, 0.0f } },
-      VTX_3D_RGB{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.5f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.5f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.5f, 0.0f } },
-      // Left face
-      VTX_3D_RGB{ {  0.5f, -0.5f, -0.5f }, { 0.5f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f, -0.5f,  0.5f }, { 0.5f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f,  0.5f }, { 0.5f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ {  0.5f,  0.5f, -0.5f }, { 0.5f, 0.0f, 0.0f } },
-      // Right face
-      VTX_3D_RGB{ { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ { -0.5f, -0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ { -0.5f,  0.5f,  0.5f }, { 1.0f, 0.0f, 0.0f } },
-      VTX_3D_RGB{ { -0.5f,  0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f } },
-
-    };
-
-    std::array<uint16_t, 36> indices
+      assert(false);
+    }
+    else
     {
-      0,  1,  2,  2,  3,  0,
-      4,  7,  6,  6,  5,  4,
-      8,  9,  10, 10, 11, 8,
-      12, 15, 14, 14, 13, 12,
-      16, 19, 18, 18, 17, 16,
-      20, 21, 22, 22, 23, 20
-    };
+      //printf_s("parsed v:\n");
+      //for (glm::vec3 const& x : parsedOBJ.m_Positions)printf_s("x: %.2f, y: %.2f, z: %.2f\n", x.x, x.y, x.z);
+      //printf_s("parsed vn:\n");
+      //for (glm::vec3 const& x : parsedOBJ.m_Normals)printf_s("x: %.2f, y: %.2f, z: %.2f\n", x.x, x.y, x.z);
+      //printf_s("parsed vt:\n");
+      //for (glm::vec2 const& x : parsedOBJ.m_TexCoords)printf_s("u: %.2f, v: %.2f\n", x.x, x.y);
+    }
 
+    std::vector<VTX_3D_RGB> vertices;
+    vertices.reserve(parsedOBJ.m_Positions.size());
+    for (size_t i{ 0 }, t{ parsedOBJ.m_Positions.size() }; i < t; ++i)
+    {
+      vertices.emplace_back(VTX_3D_RGB{ parsedOBJ.m_Positions[i], glm::vec3{ parsedOBJ.m_TexCoords[i], 1.0f } });
+    }
+
+    std::vector<uint16_t>& indices{ parsedOBJ.m_Triangles };
+
+    retval.m_VertexCount = static_cast<uint32_t>(vertices.size());
     retval.m_IndexCount = static_cast<uint32_t>(indices.size());
 
     if (false == pWH->createBuffer
@@ -141,7 +100,7 @@ vulkanModel createHW2Model()
         .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Index },
         .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Index },
         .m_Count{ retval.m_IndexCount },
-        .m_ElemSize{ sizeof(decltype(indices)::value_type) }
+        .m_ElemSize{ sizeof(uint16_t) }
       }
     ))
     {
@@ -152,14 +111,22 @@ vulkanModel createHW2Model()
     pWH->writeToBuffer
     (
       retval.m_Buffer_Vertex, 
-      vertices.data(), 
-      vertices.size() * sizeof(decltype(vertices)::value_type)
+      {
+        vertices.data()
+      },
+      {
+        vertices.size() * sizeof(decltype(vertices)::value_type)
+      }
     );
     pWH->writeToBuffer
     (
       retval.m_Buffer_Index,
-      indices.data(),
-      indices.size() * sizeof(decltype(indices)::value_type)
+      {
+        indices.data()
+      },
+      {
+        indices.size() * sizeof(uint16_t)
+      }
     );
   }
   return retval;
@@ -171,7 +138,7 @@ int main()
   _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif//DEBUG || 
   //char* leak{ new char[69] };
-
+  
   windowHandler* pWH
   {
     windowHandler::createInstance

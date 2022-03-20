@@ -320,11 +320,13 @@ void windowHandler::destroyPipelineInfo(vulkanPipeline& inPipeline)
   destroyShaderModule(inPipeline.m_ShaderVert);
 }
 
-bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDeviceSize srcLen)
-{
-  assert(srcData);  // not much time to think, just assert it
-  assert(srcLen <= static_cast<decltype(srcLen)>(dstBuffer.m_Settings.m_Count) * static_cast<decltype(srcLen)>(dstBuffer.m_Settings.m_ElemSize));
-  
+bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, std::vector<void*> const& srcs, std::vector<VkDeviceSize> const& srcLens)
+{ 
+  uint32_t totalSrcLen{ 0 };
+  for (VkDeviceSize x : srcLens)totalSrcLen += static_cast<uint32_t>(x);
+  assert(srcs.size() == srcLens.size());
+  assert(totalSrcLen <= dstBuffer.m_Settings.m_Count * dstBuffer.m_Settings.m_ElemSize);
+
   vulkanBuffer stagingBuffer;
   if (false == 
     createBuffer
@@ -334,7 +336,7 @@ bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDevi
       {
         .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Staging },
         .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Staging },
-        .m_Count{ static_cast<uint32_t>(srcLen) },
+        .m_Count{ totalSrcLen },
         .m_ElemSize{ 1 }
       }
     ))
@@ -350,10 +352,14 @@ bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, void* srcData, VkDevi
     printVKWarning(tmpRes, "Failed to map staging buffer"sv, true);
     return false;
   }
-  std::memcpy(dstData, srcData, static_cast<size_t>(srcLen));
+  for (size_t i{ 0 }, t{ srcs.size() }; i < t; ++i)
+  {
+    std::memcpy(dstData, srcs[i], srcLens[i]);
+    dstData = reinterpret_cast<char*>(dstData) + srcLens[i];
+  }
   vkUnmapMemory(m_pVKDevice->m_VKDevice, stagingBuffer.m_BufferMemory);
 
-  bool retval{ copyBuffer(dstBuffer, stagingBuffer, srcLen) };
+  bool retval{ copyBuffer(dstBuffer, stagingBuffer, totalSrcLen) };
   destroyBuffer(stagingBuffer);
   return retval;
 }
@@ -539,6 +545,12 @@ bool windowHandler::setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipe
   };
   switch (inSetup.m_VertexBindingMode)
   {
+  case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XY_UV_F32:
+    outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_2D_UV));
+    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
+    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32_SFLOAT;
+    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_2D_UV, m_Tex);
+    return true;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XY_RGB_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_2D_RGB));
     outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
@@ -550,6 +562,12 @@ bool windowHandler::setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipe
     outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
     outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
     outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_2D_RGBA, m_Col);
+    return true;
+  case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32:
+    outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_UV));
+    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32_SFLOAT;
+    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_3D_UV, m_Tex);
     return true;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_RGB_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_RGB));

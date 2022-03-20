@@ -35,8 +35,10 @@ struct vulkanPipeline
   {
     UNDEFINED,
 
+    AOS_XY_UV_F32,
     AOS_XY_RGB_F32,
     AOS_XY_RGBA_F32,
+    AOS_XYZ_UV_F32,
     AOS_XYZ_RGB_F32,
     AOS_XYZ_RGBA_F32,
     

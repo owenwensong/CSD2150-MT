@@ -19,9 +19,14 @@ struct vulkanModel
   vulkanBuffer  m_Buffer_Vertex;
   vulkanBuffer  m_Buffer_Index;
   VkIndexType   m_IndexType { VK_INDEX_TYPE_NONE_KHR };
+  uint32_t      m_VertexCount{ 0 };
   uint32_t      m_IndexCount{ 0 };
 
-  void draw(VkCommandBuffer FCB);
+  void drawVerts(VkCommandBuffer FCB);  // draw by vertex buffer only
+  void drawIndexed(VkCommandBuffer FCB);// draw by indexed vertices
+  void drawInit(VkCommandBuffer FCB);   // initialize which draw fn to use
+  void draw(VkCommandBuffer FCB);       // the draw interface
+  void (vulkanModel::* m_pFnDraw)(VkCommandBuffer) { &vulkanModel::drawInit };
   void destroyModel();
 
 };

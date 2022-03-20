@@ -166,6 +166,7 @@
     <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\utility\matrixTransforms.cpp" />
+    <ClCompile Include="src\utility\OBJLoader.cpp" />
     <ClCompile Include="src\utility\Timer.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
@@ -177,8 +178,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\handlers\windowHandler.h" />
+    <ClInclude Include="include\utility\CStrHash.hpp" />
     <ClInclude Include="include\utility\matrixTransforms.h" />
     <ClInclude Include="include\utility\lockableObject.hpp" />
+    <ClInclude Include="include\utility\OBJLoader.h" />
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
     <ClInclude Include="include\utility\Timer.h" />
