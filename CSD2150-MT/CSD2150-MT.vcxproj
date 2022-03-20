@@ -165,6 +165,7 @@
   <ItemGroup>
     <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\utility\DDSLoader.cpp" />
     <ClCompile Include="src\utility\matrixTransforms.cpp" />
     <ClCompile Include="src\utility\OBJLoader.cpp" />
     <ClCompile Include="src\utility\Timer.cpp" />
@@ -179,6 +180,7 @@
   <ItemGroup>
     <ClInclude Include="include\handlers\windowHandler.h" />
     <ClInclude Include="include\utility\CStrHash.hpp" />
+    <ClInclude Include="include\utility\DDSLoader.h" />
     <ClInclude Include="include\utility\matrixTransforms.h" />
     <ClInclude Include="include\utility\lockableObject.hpp" />
     <ClInclude Include="include\utility\OBJLoader.h" />

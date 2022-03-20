@@ -75,6 +75,9 @@
     <ClCompile Include="src\utility\OBJLoader.cpp">
       <Filter>Source Files\utility</Filter>
     </ClCompile>
+    <ClCompile Include="src\utility\DDSLoader.cpp">
+      <Filter>Source Files\utility</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\utility\Singleton.h">
@@ -132,6 +135,9 @@
       <Filter>Header Files\utility</Filter>
     </ClInclude>
     <ClInclude Include="include\utility\CStrHash.hpp">
+      <Filter>Header Files\utility</Filter>
+    </ClInclude>
+    <ClInclude Include="include\utility\DDSLoader.h">
       <Filter>Header Files\utility</Filter>
     </ClInclude>
   </ItemGroup>
