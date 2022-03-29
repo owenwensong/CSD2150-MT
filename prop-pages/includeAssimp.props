@@ -10,6 +10,10 @@
     <Link>
       <AdditionalDependencies>assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>%(Command)
+for /r "$(solutionDir)dependencies\assimp\lib\$(PlatformArchitecture)\$(Configuration)" %%x in (*.dll) do copy /Y "%%x" "$(TargetDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
