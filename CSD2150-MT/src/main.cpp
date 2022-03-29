@@ -16,7 +16,6 @@
 #include <vulkanHelpers/vulkanModel.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <utility/matrixTransforms.h>
-#include <utility/OBJLoader.h>
 #include <utility/Timer.h>
 
 struct originCamera  // struct just for this implementation always facing origin

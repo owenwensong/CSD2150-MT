@@ -165,9 +165,13 @@
   <ItemGroup>
     <ClCompile Include="src\handlers\windowHandler.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\utility\DDSLoader.cpp" />
     <ClCompile Include="src\utility\matrixTransforms.cpp" />
-    <ClCompile Include="src\utility\OBJLoader.cpp" />
+    <ClCompile Include="src\utility\OBJLoader.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="src\utility\Timer.cpp" />
     <ClCompile Include="src\vulkanHelpers\printWarnings.cpp" />
     <ClCompile Include="src\vulkanHelpers\vulkanDevice.cpp" />
@@ -180,10 +184,14 @@
   <ItemGroup>
     <ClInclude Include="include\handlers\windowHandler.h" />
     <ClInclude Include="include\utility\CStrHash.hpp" />
-    <ClInclude Include="include\utility\DDSLoader.h" />
     <ClInclude Include="include\utility\matrixTransforms.h" />
     <ClInclude Include="include\utility\lockableObject.hpp" />
-    <ClInclude Include="include\utility\OBJLoader.h" />
+    <ClInclude Include="include\utility\OBJLoader.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="include\utility\Singleton.h" />
     <ClInclude Include="include\utility\Singleton.hpp" />
     <ClInclude Include="include\utility\Timer.h" />

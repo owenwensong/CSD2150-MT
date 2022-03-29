@@ -3,6 +3,7 @@
  * @author  Owen Huang Wensong  (w.huang@digipen.edu)
  * @date    19 MAR 2022
  * @brief   This file contains the definitions for an OBJ loader
+ *          THIS FILE IS OBSOLETE AND NOT IN USE DUE TO THE INCLUSION OF ASSIMP.
  *
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
