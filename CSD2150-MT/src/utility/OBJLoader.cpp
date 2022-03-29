@@ -7,7 +7,6 @@
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
 
-#include <iostream>// TEST
 #include <string>               // for individual lines from file
 #include <charconv>             // string_view safe version of stoi/stof
 #include <glm/glm.hpp>          // for generic vectors
@@ -184,12 +183,12 @@ bool MTU::loadOBJ(std::ifstream& ifs, OBJOutputs& outputs, OBJLoadSettings setti
     {
     case "mtllib"_literalHash:
       // OBJ material
-      std::cout << "read material: " << lineOBJData.m_Content << std::endl;
+      outputs.m_Material = lineOBJData.m_Content;
       break;
     case "o"_literalHash:
     case "g"_literalHash:
       // OBJ name
-      std::cout << "read name: " << lineOBJData.m_Content << std::endl;
+      outputs.m_Name = lineOBJData.m_Content;
       break;
     case "v"_literalHash:
       // Vertex position
