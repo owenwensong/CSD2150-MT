@@ -12,7 +12,7 @@ cmake CMakeLists.txt
 
 SET SOURCE_DIR=.
 SET GENERATOR=Visual Studio 16 2019
-::assume all names are assimp-vc142....lib, vc142 because vs2019 toolset 142
+:: names are all dynamic since all moves happen for all dll and entire lib folder
 
 SET BINARIES_DIR="./build/Win32"
 cmake . -G "%GENERATOR%" -A Win32 -S %SOURCE_DIR% -B %BINARIES_DIR%
@@ -28,7 +28,7 @@ cmake --build %BINARIES_DIR% --config release
 if exist "%SOURCE_DIR%/lib" rmdir "%SOURCE_DIR%/lib" /s /q
 mkdir "%SOURCE_DIR%/lib"
 
-:: move the files to a nicer place for the prop-pages, 32/64 for prop-page architecture macro
+:: move the files to a nicer place for the prop-pages, 32/64 for prop-page platform architecture macro
 move /Y "%SOURCE_DIR%/build/Win32/lib" "%SOURCE_DIR%/lib/32"
 move /Y "%SOURCE_DIR%/build/x64/lib" "%SOURCE_DIR%/lib/64"
 
@@ -51,7 +51,7 @@ for /r "%SOURCE_DIR%/lib" %%x in (*-mtd.lib, *-mt.lib) do ren "%%x" assimp.lib
 goto END
 
 :ERRNODIR
-powershell write-host -fore Red assimp directory not found
+powershell write-host -fore Red "assimp directory not found"
 goto END
 
 :END
