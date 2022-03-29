@@ -28,9 +28,9 @@ cmake --build %BINARIES_DIR% --config release
 if exist "%SOURCE_DIR%/lib" rmdir "%SOURCE_DIR%/lib" /s /q
 mkdir "%SOURCE_DIR%/lib"
 
-:: move the files to a nicer place for the prop-pages
-move /Y %SOURCE_DIR%/build/Win32/lib %SOURCE_DIR%/lib/Win32
-move /Y %SOURCE_DIR%/build/x64/lib %SOURCE_DIR%/lib/x64
+:: move the files to a nicer place for the prop-pages, 32/64 for prop-page architecture macro
+move /Y %SOURCE_DIR%/build/Win32/lib %SOURCE_DIR%/lib/32
+move /Y %SOURCE_DIR%/build/x64/lib %SOURCE_DIR%/lib/64
 
 :: visual studio files, really big. 
 rmdir "%SOURCE_DIR%/build" /s /q

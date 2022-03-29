@@ -63,6 +63,7 @@
     <Import Project="..\prop-pages\includeVulkan.props" />
     <Import Project="..\prop-pages\vklib32.props" />
     <Import Project="..\prop-pages\includeGLM.props" />
+    <Import Project="..\prop-pages\includeAssimp.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -70,6 +71,7 @@
     <Import Project="..\prop-pages\includeVulkan.props" />
     <Import Project="..\prop-pages\vklib32.props" />
     <Import Project="..\prop-pages\includeGLM.props" />
+    <Import Project="..\prop-pages\includeAssimp.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -77,6 +79,7 @@
     <Import Project="..\prop-pages\includeVulkan.props" />
     <Import Project="..\prop-pages\vklib64.props" />
     <Import Project="..\prop-pages\includeGLM.props" />
+    <Import Project="..\prop-pages\includeAssimp.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -84,6 +87,7 @@
     <Import Project="..\prop-pages\includeVulkan.props" />
     <Import Project="..\prop-pages\vklib64.props" />
     <Import Project="..\prop-pages\includeGLM.props" />
+    <Import Project="..\prop-pages\includeAssimp.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
