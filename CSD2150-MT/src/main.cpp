@@ -18,6 +18,10 @@
 #include <utility/matrixTransforms.h>
 #include <utility/Timer.h>
 
+#include <assimp/Importer.hpp>  // file IO
+#include <assimp/scene.h>       // output data
+#include <assimp/postprocess.h> // dumbass flags
+
 struct originCamera  // struct just for this implementation always facing origin
 {
   float     m_Dist;
@@ -50,30 +54,35 @@ vulkanModel createHW2Model()
   vulkanModel retval{ .m_IndexType{ VK_INDEX_TYPE_UINT16 } };
   if (windowHandler* pWH{ windowHandler::getPInstance() }; pWH != nullptr)
   {
+    std::vector<VTX_3D_RGB> vertices;
+    std::vector<uint16_t> indices;
 
-    MTU::OBJOutputs parsedOBJ;
-    if (std::ifstream ifs{ "../Assets/Meshes/cube.obj" }; false == MTU::loadOBJ(ifs, parsedOBJ, MTU::OBJLoadSettings{ .m_bLoadNormals{ false }, .m_bLoadTexCoords{ true } }))
+    Assimp::Importer Importer;
+    if (aiScene const* pScene{ Importer.ReadFile("../Assets/Meshes/cube.obj", aiProcess_Triangulate | aiProcess_JoinIdenticalVertices) }; pScene == nullptr)
     {
       assert(false);
     }
     else
     {
-      //printf_s("parsed v:\n");
-      //for (glm::vec3 const& x : parsedOBJ.m_Positions)printf_s("x: %.2f, y: %.2f, z: %.2f\n", x.x, x.y, x.z);
-      //printf_s("parsed vn:\n");
-      //for (glm::vec3 const& x : parsedOBJ.m_Normals)printf_s("x: %.2f, y: %.2f, z: %.2f\n", x.x, x.y, x.z);
-      //printf_s("parsed vt:\n");
-      //for (glm::vec2 const& x : parsedOBJ.m_TexCoords)printf_s("u: %.2f, v: %.2f\n", x.x, x.y);
-    }
+      assert(pScene->HasMeshes());
+      aiMesh& refMesh{ *pScene->mMeshes[0] };
+      vertices.reserve(refMesh.mNumVertices);
+      for (unsigned int i{ 0 }, t{ refMesh.mNumVertices }; i < t; ++i)
+      {
+        aiVector3D& refVtx{ refMesh.mVertices[i] };
+        vertices.emplace_back(VTX_3D_RGB{ glm::vec3{ refVtx.x, refVtx.y, refVtx.z }, glm::vec3{ refVtx.x, refVtx.y, refVtx.z } });
+      }
+      assert(refMesh.HasFaces());
+      for (unsigned int i{ 0 }, t{ refMesh.mNumFaces }; i < t; ++i)
+      {
+        aiFace& refFace{ refMesh.mFaces[i] };
+        for (unsigned int j{ 0 }; j < refFace.mNumIndices; ++j)
+        {
+          indices.emplace_back(static_cast<uint16_t>(refFace.mIndices[j]));
+        }
+      }
 
-    std::vector<VTX_3D_RGB> vertices;
-    vertices.reserve(parsedOBJ.m_Positions.size());
-    for (size_t i{ 0 }, t{ parsedOBJ.m_Positions.size() }; i < t; ++i)
-    {
-      vertices.emplace_back(VTX_3D_RGB{ parsedOBJ.m_Positions[i], glm::vec3{ parsedOBJ.m_TexCoords[i], 1.0f } });
     }
-
-    std::vector<uint16_t>& indices{ parsedOBJ.m_Triangles };
 
     retval.m_VertexCount = static_cast<uint32_t>(vertices.size());
     retval.m_IndexCount = static_cast<uint32_t>(indices.size());
