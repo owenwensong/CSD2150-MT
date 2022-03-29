@@ -29,16 +29,24 @@ if exist "%SOURCE_DIR%/lib" rmdir "%SOURCE_DIR%/lib" /s /q
 mkdir "%SOURCE_DIR%/lib"
 
 :: move the files to a nicer place for the prop-pages, 32/64 for prop-page architecture macro
-move /Y %SOURCE_DIR%/build/Win32/lib %SOURCE_DIR%/lib/32
-move /Y %SOURCE_DIR%/build/x64/lib %SOURCE_DIR%/lib/64
+move /Y "%SOURCE_DIR%/build/Win32/lib" "%SOURCE_DIR%/lib/32"
+move /Y "%SOURCE_DIR%/build/x64/lib" "%SOURCE_DIR%/lib/64"
+
+:: move dlls
+for /r "%SOURCE_DIR%/build/Win32/bin/Debug" %%x in (*.dll) do move /Y "%%x" "%SOURCE_DIR%/lib/32/Debug"
+for /r "%SOURCE_DIR%/build/Win32/bin/Release" %%x in (*.dll) do move /Y "%%x" "%SOURCE_DIR%/lib/32/Release"
+for /r "%SOURCE_DIR%/build/x64/bin/Debug" %%x in (*.dll) do move /Y "%%x" "%SOURCE_DIR%/lib/64/Debug"
+for /r "%SOURCE_DIR%/build/x64/bin/Release" %%x in (*.dll) do move /Y "%%x" "%SOURCE_DIR%/lib/64/Release"
+
+:: copy static library config. Using dll so cancel this
+::copy /y "%SOURCE_DIR%/build/x64/include/assimp" "%SOURCE_DIR%/include/assimp"
 
 :: visual studio files, really big. 
 rmdir "%SOURCE_DIR%/build" /s /q
 
-:: rename files for the prop-pages. cd because I'm lazy to get the * to work cleanly with relative path
-cd %SOURCE_DIR%/lib
-for /r %%i in (*-mtd.exp, *-mt.exp) do ren "%%i" assimp.exp
-for /r %%i in (*-mtd.lib, *-mt.lib) do ren "%%i" assimp.lib
+:: rename files for the prop-pages.
+for /r "%SOURCE_DIR%/lib" %%x in (*-mtd.exp, *-mt.exp) do ren "%%x" assimp.exp
+for /r "%SOURCE_DIR%/lib" %%x in (*-mtd.lib, *-mt.lib) do ren "%%x" assimp.lib
 
 goto END
 
