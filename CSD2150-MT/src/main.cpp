@@ -82,10 +82,12 @@ int main()
       vulkanPipeline::setup
       {
         .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32 },
+        
         .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
         .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
 
-        // uniform stuff here
+        // TODO: move createPipelineInfo to be window specific?
+        .m_pSetLayouts{ &upVKWin->m_UniformBuffers.m_DescriptorSetLayouts },
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
         .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
@@ -162,6 +164,12 @@ int main()
       // *******************************************************************
       // ******************************************** RENDER LOOP BEGIN ****
         upVKWin->createAndSetPipeline(trianglePipeline);
+
+        // uniform test here
+        {
+          uniformVert tmpFUV{ 0.5f };
+          upVKWin->updateFixedUniformBuffer(fixedUniformBuffers::e_vert, &tmpFUV, sizeof(tmpFUV));
+        }
 
         { // static hidden box object
           // cam starts with X, so behind is more X

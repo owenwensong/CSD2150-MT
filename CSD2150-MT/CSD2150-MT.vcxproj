@@ -207,6 +207,7 @@
     <ClInclude Include="include\utility\vertices.h" />
     <ClInclude Include="include\utility\windowsInclude.h" />
     <ClInclude Include="include\vulkanHelpers\printWarnings.h" />
+    <ClInclude Include="include\vulkanHelpers\uniformBuffers.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanBuffer.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanDevice.h" />
     <ClInclude Include="include\vulkanHelpers\vulkanInstance.h" />

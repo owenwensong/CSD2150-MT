@@ -161,11 +161,13 @@ bool windowHandler::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeli
     VkPipelineLayoutCreateInfo CreateInfo
     {
       .sType{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
-      .setLayoutCount         { 0 },      // future for descriptor sets
-      .pSetLayouts            { nullptr },// future for descriptor sets
+      .setLayoutCount         { inSetup.m_pSetLayouts ? static_cast<uint32_t>(inSetup.m_pSetLayouts->size()) : 0 },
+      .pSetLayouts            { inSetup.m_pSetLayouts ? inSetup.m_pSetLayouts->data() : nullptr },
       .pushConstantRangeCount { 0 },      // default to 0
       .pPushConstantRanges    { nullptr } // default to nullptr
     };
+
+    // push constant stuff
     if (inSetup.m_PushConstantRangeVert.size != 0)
     {
       CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeVert;
@@ -176,6 +178,7 @@ bool windowHandler::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeli
       CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeFrag;
       CreateInfo.pushConstantRangeCount = 1;
     }
+    
     outPipeline.m_PipelineLayout = createPipelineLayout(CreateInfo);
     if (outPipeline.m_PipelineLayout == VK_NULL_HANDLE)
     {

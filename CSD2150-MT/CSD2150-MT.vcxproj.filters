@@ -140,5 +140,8 @@
     <ClInclude Include="include\utility\CStrHash.hpp">
       <Filter>Header Files\utility</Filter>
     </ClInclude>
+    <ClInclude Include="include\vulkanHelpers\uniformBuffers.h">
+      <Filter>Header Files\vulkanHelpers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -60,7 +60,7 @@ public:
 
     // Buffers
 
-    /// @brief write into a staging buffer (must have host visible and host coherent bits set)
+    /// @brief write into a buffer through a staging buffer
     /// @param dstBuffer destination buffer
     /// @param srcData data source
     /// @param srcLen length of the data to write to the buffer

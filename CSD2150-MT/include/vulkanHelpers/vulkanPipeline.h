@@ -14,6 +14,8 @@
 #include <vulkan/vulkan.h>
 #include <string_view>
 #include <array>
+#include <vulkanHelpers/vulkanBuffer.h>
+#include <vulkanHelpers/uniformBuffers.h>
 
 struct vulkanPipeline
 {
@@ -30,7 +32,7 @@ struct vulkanPipeline
       .size{ totalTypesSize<pushConstantTypes...>() }
     };
   }
-  
+
   enum class E_VERTEX_BINDING_MODE
   {
     UNDEFINED,
@@ -57,8 +59,9 @@ struct vulkanPipeline
     // shader paths
     std::string_view m_PathShaderVert{  };
     std::string_view m_PathShaderFrag{  };
-    
-    // uniform stuff?
+
+    // hack because why can't anyone be straight with where descriptor sets go
+    decltype(fixedUniformBuffers::m_DescriptorSetLayouts) const* m_pSetLayouts{ nullptr };
 
     // will be used directly for pPushConstantRanges, don't move it around.
     VkPushConstantRange m_PushConstantRangeVert{ createPushConstantInfo<>(VK_SHADER_STAGE_VERTEX_BIT) };
@@ -68,6 +71,7 @@ struct vulkanPipeline
   // moved in, dangerous... keep track of allocations maybe?
   VkShaderModule                                    m_ShaderVert          { VK_NULL_HANDLE };
   VkShaderModule                                    m_ShaderFrag          { VK_NULL_HANDLE };
+  VkDescriptorSetLayout                             m_DescriptorSetLayout { VK_NULL_HANDLE };
   VkPipelineLayout                                  m_PipelineLayout      { VK_NULL_HANDLE };
 
   std::array<VkPipelineShaderStageCreateInfo, 2>    m_ShaderStages        {};

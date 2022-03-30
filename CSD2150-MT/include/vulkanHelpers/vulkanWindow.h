@@ -13,6 +13,7 @@
 #include <windowsHelpers/windowsWindow.h>
 #include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/vulkanPipeline.h>
+#include <vulkanHelpers/uniformBuffers.h>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include <memory>
@@ -32,6 +33,11 @@ struct vulkanFrameSem
 {
     VkSemaphore     m_VKImageAcquiredSemaphore  {};
     VkSemaphore     m_VKRenderCompleteSemaphore {};
+};
+
+struct vulkanPipelineData
+{
+  VkPipeline  m_Pipeline      { VK_NULL_HANDLE };
 };
 
 class vulkanWindow
@@ -70,6 +76,8 @@ public:
     // any created will be stored to be auto destroyed
     bool createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo);
 
+    void updateFixedUniformBuffer(uint32_t target, void* pData, size_t dataLen);
+
 private:
 
     void updateDefaultViewportAndScissor() noexcept;
@@ -79,10 +87,16 @@ private:
     bool CreateDepthResources(VkExtent2D Extents) noexcept;
     bool CreateRenderPass(VkSurfaceFormatKHR& VKColorSurfaceFormat, VkFormat& VKDepthSurfaceFormat) noexcept;
     bool CreateWindowCommandBuffers() noexcept;
+    bool CreateUniformDescriptorSetLayouts() noexcept;
+    bool CreateUniformBuffers() noexcept;
+    bool CreateUniformDescriptorSets() noexcept;
 
     void DestroyRenderPass() noexcept;
-
+    void DestroyPipelineData(vulkanPipelineData& inPipelineData) noexcept;
     void DestroyPipelines() noexcept;
+    void DestroyUniformDescriptorSetLayouts() noexcept;
+    void DestroyUniformBuffers() noexcept;
+    void DestroyUniformDescriptorSets() noexcept;
 
 public: // all public, let whoever touch it /shrug
 
@@ -99,14 +113,15 @@ public: // all public, let whoever touch it /shrug
     VkDeviceMemory                      m_VKDepthbufferMemory   {};
     VkRenderPass                        m_VKRenderPass          {};
     //VkPipeline                          m_VKPipeline            {};
-    std::unordered_map<vulkanPipeline*, VkPipeline> m_VKPipelines{};
+    std::unordered_map<vulkanPipeline*, vulkanPipelineData> m_VKPipelines{};
+    fixedUniformBuffers                 m_UniformBuffers        {};
     VkSurfaceFormatKHR                  m_VKSurfaceFormat       {};
     VkFormat                            m_VKDepthFormat         {};
     VkPresentModeKHR                    m_VKPresentMode         {};
     uint32_t                            m_SemaphoreIndex        { 0 };
     uint32_t                            m_FrameIndex            { 0 };
-    int                                 m_BeginState            { 0 };
-    int                                 m_nCmds                 { 0 };
+    //int                                 m_BeginState            { 0 };
+    //int                                 m_nCmds                 { 0 };
     VkViewport                          m_DefaultViewport       {};
     VkRect2D                            m_DefaultScissor        {};
     // mati_per_renderpass_map  // not going to do this until required...
