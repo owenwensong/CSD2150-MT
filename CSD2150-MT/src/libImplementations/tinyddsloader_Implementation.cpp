@@ -16,6 +16,6 @@
 #include <tinyddsloader.h>
 #undef TINYDDSLOADER_IMPLEMENTATION
 
-#pragma warning (disable : 26451 26812)// reenable warnings
+#pragma warning (default : 26451 26812)// reenable warnings
 
 #endif//TINYDDS_IMPLEMENTED

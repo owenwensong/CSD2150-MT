@@ -10,6 +10,7 @@
 #ifndef VULKAN_MODEL_HELPER_HEADER
 #define VULKAN_MODEL_HELPER_HEADER
 
+#include <string_view>
 #include <vulkan/vulkan.h>
 #include <utility/vertices.h>
 #include <vulkanHelpers/vulkanBuffer.h>
@@ -27,6 +28,8 @@ struct vulkanModel
   void drawInit(VkCommandBuffer FCB);   // initialize which draw fn to use
   void draw(VkCommandBuffer FCB);       // the draw interface
   void (vulkanModel::* m_pFnDraw)(VkCommandBuffer) { &vulkanModel::drawInit };
+
+  bool load3DUVModel(std::string_view const&);
   void destroyModel();
 
 };

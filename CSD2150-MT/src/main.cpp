@@ -18,10 +18,6 @@
 #include <utility/matrixTransforms.h>
 #include <utility/Timer.h>
 
-#include <assimp/Importer.hpp>  // file IO
-#include <assimp/scene.h>       // output data
-#include <assimp/postprocess.h> // dumbass flags
-
 struct originCamera  // struct just for this implementation always facing origin
 {
   float     m_Dist;
@@ -47,98 +43,6 @@ const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0
 const float originCamera::s_RotYMax{ std::nextafterf( glm::half_pi<float>(), 0.0f) };
 const glm::vec3 originCamera::s_Tgt{ 0.0f, 0.0f, 0.0f };
 const glm::vec3 originCamera::s_Up{ 0.0f, 1.0f, 0.0f };
-
-// wanted to use DPML, but probably not allowed since can't pull it from git
-vulkanModel createHW2Model()
-{
-  vulkanModel retval{ .m_IndexType{ VK_INDEX_TYPE_UINT16 } };
-  if (windowHandler* pWH{ windowHandler::getPInstance() }; pWH != nullptr)
-  {
-    std::vector<VTX_3D_RGB> vertices;
-    std::vector<uint16_t> indices;
-
-    Assimp::Importer Importer;
-    if (aiScene const* pScene{ Importer.ReadFile("../Assets/Meshes/cube.obj", aiProcess_Triangulate | aiProcess_JoinIdenticalVertices) }; pScene == nullptr)
-    {
-      assert(false);
-    }
-    else
-    {
-      assert(pScene->HasMeshes());
-      aiMesh& refMesh{ *pScene->mMeshes[0] };
-      vertices.reserve(refMesh.mNumVertices);
-      for (unsigned int i{ 0 }, t{ refMesh.mNumVertices }; i < t; ++i)
-      {
-        aiVector3D& refVtx{ refMesh.mVertices[i] };
-        vertices.emplace_back(VTX_3D_RGB{ glm::vec3{ refVtx.x, refVtx.y, refVtx.z }, glm::vec3{ refVtx.x, refVtx.y, refVtx.z } });
-      }
-      assert(refMesh.HasFaces());
-      for (unsigned int i{ 0 }, t{ refMesh.mNumFaces }; i < t; ++i)
-      {
-        aiFace& refFace{ refMesh.mFaces[i] };
-        for (unsigned int j{ 0 }; j < refFace.mNumIndices; ++j)
-        {
-          indices.emplace_back(static_cast<uint16_t>(refFace.mIndices[j]));
-        }
-      }
-
-    }
-
-    retval.m_VertexCount = static_cast<uint32_t>(vertices.size());
-    retval.m_IndexCount = static_cast<uint32_t>(indices.size());
-
-    if (false == pWH->createBuffer
-    (
-      retval.m_Buffer_Vertex, 
-      {
-        .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Vertex }, 
-        .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Vertex }, 
-        .m_Count{ static_cast<uint32_t>(vertices.size()) }, 
-        .m_ElemSize{ sizeof(decltype(vertices)::value_type) } 
-      }
-    ))
-    {
-      printWarning("failed to create model vertex buffer"sv, true);
-      return retval;
-    }
-    if (false == pWH->createBuffer
-    (
-      retval.m_Buffer_Index,
-      {
-        .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Index },
-        .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Index },
-        .m_Count{ retval.m_IndexCount },
-        .m_ElemSize{ sizeof(uint16_t) }
-      }
-    ))
-    {
-      printWarning("failed to create model index buffer"sv, true);
-      return retval;
-    }
-
-    pWH->writeToBuffer
-    (
-      retval.m_Buffer_Vertex, 
-      {
-        vertices.data()
-      },
-      {
-        vertices.size() * sizeof(decltype(vertices)::value_type)
-      }
-    );
-    pWH->writeToBuffer
-    (
-      retval.m_Buffer_Index,
-      {
-        indices.data()
-      },
-      {
-        indices.size() * sizeof(uint16_t)
-      }
-    );
-  }
-  return retval;
-}
 
 int main()
 {
@@ -166,15 +70,20 @@ int main()
   {
     windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
 
-    vulkanModel exampleModel{ createHW2Model() };
+    vulkanModel exampleModel;
+    if (false == exampleModel.load3DUVModel("../Assets/Meshes/cube.obj"))
+    {
+      printWarning("Failed to load example model"sv, true);
+      return -4;
+    }
 
     vulkanPipeline trianglePipeline;
     if (!pWH->createPipelineInfo(trianglePipeline,
       vulkanPipeline::setup
       {
-        .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_RGB_F32 },
-        .m_PathShaderVert{ "../Assets/Shaders/triangleVert.spv"sv },
-        .m_PathShaderFrag{ "../Assets/Shaders/triangleFrag.spv"sv },
+        .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32 },
+        .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
+        .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
 
         // uniform stuff here
 
