@@ -1,5 +1,5 @@
 @echo off
-:: This file is designed to run from the Tools folder, byy the getDependencies script.
+:: This file is designed to run from the Tools folder, by the getDependencies script.
 :: it will try to access the dependencies folder from there
 
 SET CURR_DIR=%cd%
@@ -51,7 +51,7 @@ for /r "%SOURCE_DIR%/lib" %%x in (*-mtd.lib, *-mt.lib) do ren "%%x" assimp.lib
 goto END
 
 :ERRNODIR
-powershell write-host -fore Red "assimp directory not found"
+powershell write-host -fore Red 'assimp directory not found'
 goto END
 
 :END

@@ -12,6 +12,10 @@ powershell write-host -fore Green 'Setting up: OpenGL Mathematics (GLM)'
 git clone https://github.com/g-truc/glm "../dependencies/glm"
 if %errorlevel% GEQ 1 goto ERRGITCLONE
 
+powershell write-host -fore Green 'Setting up: tinyddsloader'
+git clone https://github.com/benikabocha/tinyddsloader "../dependencies/tinyddsloader"
+if %errorlevel% GEQ 1 goto ERRGITCLONE
+
 powershell write-host -fore Green 'Setting up: Open Asset Import Library (assimp)'
 git clone https://github.com/assimp/assimp "../dependencies/assimp"
 if %errorlevel% GEQ 1 goto ERRGITCLONE

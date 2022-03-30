@@ -37,6 +37,9 @@
     <Filter Include="Source Files\utility">
       <UniqueIdentifier>{ba60f054-84d1-4e20-bbd7-1d495e405372}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\libImplementations">
+      <UniqueIdentifier>{239f70c2-a1c2-4f9b-aac1-98f2e77f1799}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -74,6 +77,9 @@
     </ClCompile>
     <ClCompile Include="src\utility\OBJLoader.cpp">
       <Filter>Source Files\utility</Filter>
+    </ClCompile>
+    <ClCompile Include="src\libImplementations\tinyddsloader_Implementation.cpp">
+      <Filter>Source Files\libImplementations</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
