@@ -28,10 +28,11 @@ struct originCamera  // struct just for this implementation always facing origin
 
   glm::ivec2 m_CursorPrev;
 
-  static constexpr glm::vec2 s_DistLimits{ 2.0f, 50.0f };
+  static constexpr glm::vec2 s_DistLimits{ 250.0f, 500.0f };
+  static constexpr float s_ScrollSpeedMul{ 2.0f };
   static constexpr float s_CamFOV{ glm::radians(75.0f) };
   static constexpr float s_Near{ 0.125f };
-  static constexpr float s_Far{ s_DistLimits.y + 2.0f };
+  static constexpr float s_Far{ s_DistLimits.y * 1.5f };
   static const float s_RotYMin;
   static const float s_RotYMax;
   static const glm::vec3 s_Tgt;
@@ -71,7 +72,7 @@ int main()
     windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
 
     vulkanModel exampleModel;
-    if (false == exampleModel.load3DUVModel("../Assets/Meshes/cube.obj"))
+    if (false == exampleModel.load3DUVModel("../Assets/Meshes/Skull_textured.fbx"))
     {
       printWarning("Failed to load example model"sv, true);
       return -4;
@@ -111,7 +112,7 @@ int main()
 
       static originCamera cam
       {
-        .m_Dist       { 2.0f },
+        .m_Dist       { originCamera::s_DistLimits.x },
         .m_Rot        { 0.0f, 0.0f },
         .m_LookMat
         {
@@ -135,7 +136,7 @@ int main()
         cam.m_Rot.y = glm::clamp(cam.m_Rot.y + cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
         
         // update cam distance from origin based on scroll
-        cam.m_Dist = glm::clamp(cam.m_Dist - 0.25f * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
+        cam.m_Dist = glm::clamp(cam.m_Dist - cam.s_ScrollSpeedMul * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
 
         // update lookat
         glm::vec3 camPos
@@ -167,30 +168,23 @@ int main()
 
         // uniform test here
         {
-          uniformVert tmpFUV{ 0.5f };
+          uniformVert tmpFUV{ 0.0f };
           upVKWin->updateFixedUniformBuffer(fixedUniformBuffers::e_vert, &tmpFUV, sizeof(tmpFUV));
         }
 
-        { // static hidden box object
-          // cam starts with X, so behind is more X
-          static const glm::vec3 boxWorldPos{ -1.0f, -0.5f, 0.0f };
-          glm::mat4 xform{ glm::translate(cam.m_W2V, boxWorldPos) };
-          vkCmdPushConstants(FCB, trianglePipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(glm::mat4)), &xform);
-          exampleModel.draw(FCB);
-        }
-        { // Rotating box object
+        { // Rotating object
           static MTU::Timer lazyTimer{ MTU::Timer::getCurrentTP() };// force start the static timer since I'm lazy
           lazyTimer.stop();// lap the timer, doesn't actually stop it
           float boxRot{ static_cast<float>(lazyTimer.getElapsedCount()) / MTU::Timer::clockFrequency };// ~6s/Rotation
-          glm::mat3 tmpform{ MTU::axisAngleRotation(cam.s_Up, boxRot, nullptr) };
-          glm::mat4 xform
-          {
-            glm::vec4{ tmpform[0], 0.0f },
-            glm::vec4{ tmpform[1], 0.0f },
-            glm::vec4{ tmpform[2], 0.0f },
-            glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }
-          };
-          xform = cam.m_W2V * xform;
+          //glm::mat3 tmpform{ MTU::axisAngleRotation(cam.s_Up, boxRot, nullptr) };
+          glm::mat4 xform/**/{ cam.m_W2V };/**/
+          //{
+          //  glm::vec4{ tmpform[0], 0.0f },
+          //  glm::vec4{ tmpform[1], 0.0f },
+          //  glm::vec4{ tmpform[2], 0.0f },
+          //  glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }
+          //};
+          //xform = cam.m_W2V * xform;
           vkCmdPushConstants(FCB, trianglePipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(glm::mat4)), &xform);
           exampleModel.draw(FCB);
         }

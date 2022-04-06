@@ -13,6 +13,9 @@
 #include <vulkanHelpers/vulkanBuffer.h>
 #include <vector>
 #include <array>
+#include <glm/mat4x4.hpp>
+
+// might need to play with alignment in the future
 
 struct uniformVert
 {

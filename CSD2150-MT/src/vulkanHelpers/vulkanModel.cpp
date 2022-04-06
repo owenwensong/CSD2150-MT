@@ -57,26 +57,53 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
   assert(pWH != nullptr);// debug only, flow should be pretty standard.
 
   Assimp::Importer Importer;
-  aiScene const* pScene{ Importer.ReadFile(fPath.data(), aiProcess_Triangulate | aiProcess_JoinIdenticalVertices) };
+  aiScene const* pScene
+  {
+    Importer.ReadFile
+    (
+      fPath.data(),
+      aiProcess_Triangulate |
+      aiProcess_JoinIdenticalVertices |
+      aiProcess_PreTransformVertices
+    )
+  };
   if (pScene == nullptr || false == pScene->HasMeshes())return false;
 
   std::vector<VTX_3D_UV> vertices;
-  std::vector<uint16_t> indices;
+  std::vector<uint32_t> indices;
 
+  { // reserve all the space needed...
+    size_t vSpace{ 0 }, iSpace{ 0 };
+    for (unsigned int i{ 0 }, t{ pScene->mNumMeshes }; i < t; ++i)
+    {
+      vSpace += pScene->mMeshes[i]->mNumVertices;
+      for (unsigned int j{ 0 }, k{ pScene->mMeshes[i]->mNumFaces }; j < k; ++j)
+      {
+        iSpace += pScene->mMeshes[i]->mFaces[j].mNumIndices;
+      }
+    }
+    vertices.reserve(vSpace);
+    indices.reserve(iSpace);
+  }
+
+  // end up being unnecessary, pretransformvertices was what I needed...
+  for (unsigned int i{ 0 }, t{ pScene->mNumMeshes }; i < t; ++i)
   {
-    aiMesh& refMesh{ *pScene->mMeshes[0] };
+    aiMesh& refMesh{ *pScene->mMeshes[i] };
     if (false == refMesh.HasTextureCoords(0))
     {
       printWarning('\"' + std::string{fPath} + "\" has no/incomplete texture coordinates", true);
       return false;
     }
 
+    // save index offset (indices start from last vertex for multi mesh objects)
+    size_t indexOffset{ vertices.size() };
+
     // Set up vertices
-    vertices.reserve(refMesh.mNumVertices);
-    for (unsigned int i{ 0 }, t{ refMesh.mNumVertices }; i < t; ++i)
+    for (unsigned int j{ 0 }, k{ refMesh.mNumVertices }; j < k; ++j)
     {
-      aiVector3D& refVtx{ refMesh.mVertices[i] };
-      aiVector3D& refUV{ refMesh.mTextureCoords[0][i] };// I hope 0 is good
+      aiVector3D& refVtx{ refMesh.mVertices[j] };
+      aiVector3D& refUV{ refMesh.mTextureCoords[0][j] };// I hope 0 is good
       vertices.emplace_back
       (
         VTX_3D_UV
@@ -90,16 +117,15 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     // Set up Indices
     if (refMesh.HasFaces())
     {
-      indices.reserve(refMesh.mNumFaces * 3);// assume all faces are tris
-      for (unsigned int i{ 0 }, t{ refMesh.mNumFaces }; i < t; ++i)
+      for (unsigned int j{ 0 }; j < refMesh.mNumFaces; ++j)
       {
-        aiFace& refFace{ refMesh.mFaces[i] };
-        for (unsigned int j{ 0 }; j < refFace.mNumIndices; ++j)
+        aiFace& refFace{ refMesh.mFaces[j] };
+        for (unsigned int k{ 0 }; k < refFace.mNumIndices; ++k)
         {
-          indices.emplace_back(static_cast<decltype(indices)::value_type>(refFace.mIndices[j]));
+          indices.emplace_back(static_cast<decltype(indices)::value_type>(indexOffset + refFace.mIndices[k]));
         }
       }
-    }
+    }// else add by raw vertex?
   }
 
   m_VertexCount = static_cast<uint32_t>(vertices.size());
@@ -117,8 +143,8 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     {
       .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Vertex },
       .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Vertex },
-      .m_Count{ static_cast<uint32_t>(vertices.size()) },
-      .m_ElemSize{ sizeof(decltype(vertices)::value_type) }
+      .m_Count      { m_VertexCount },
+      .m_ElemSize   { sizeof(decltype(vertices)::value_type) }
     }
   ))
   {
@@ -147,8 +173,8 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
       {
         .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Index },
         .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Index },
-        .m_Count{ m_IndexCount },
-        .m_ElemSize{ sizeof(uint16_t) }
+        .m_Count      { m_IndexCount },
+        .m_ElemSize   { sizeof(decltype(indices)::value_type) }
       }
     ))
     {
@@ -164,7 +190,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
         indices.data()
       },
       {
-        indices.size() * sizeof(uint16_t)
+        indices.size() * sizeof(decltype(indices)::value_type)
       }
     );
   }
