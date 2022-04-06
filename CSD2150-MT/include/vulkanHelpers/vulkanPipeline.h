@@ -33,6 +33,26 @@ struct vulkanPipeline
     };
   }
 
+  struct uniformInfo
+  {
+    uint32_t         m_TypeBindingID; // where it binds to
+    uint32_t         m_TypeSize;      // size to allocate buffer
+    uint32_t         m_TypeAlign;     // unused but might be useful
+    VkDescriptorType m_DescriptorType;// data/sampler
+  };
+
+  template <typename... Ts>
+  static inline constexpr std::vector<uniformInfo> createUniformInfo(uint32_t firstBindingID = 0)
+  {
+    return std::vector<uniformInfo>
+    { uniformInfo{
+      .m_TypeBindingID  { firstBindingID++ }, // keep incrementing bind ID
+      .m_TypeSize       { sizeof(Ts) },       // variadic unpacked size
+      .m_TypeAlign      { alignof(Ts) },      // variadic unpacked alignment
+      .m_DescriptorType { /*std::is_same_v<Ts, samplerType>*/ }
+    }... };
+  }
+
   enum class E_VERTEX_BINDING_MODE
   {
     UNDEFINED,
@@ -71,8 +91,13 @@ struct vulkanPipeline
   // moved in, dangerous... keep track of allocations maybe?
   VkShaderModule                                    m_ShaderVert          { VK_NULL_HANDLE };
   VkShaderModule                                    m_ShaderFrag          { VK_NULL_HANDLE };
-  VkDescriptorSetLayout                             m_DescriptorSetLayout { VK_NULL_HANDLE };
   VkPipelineLayout                                  m_PipelineLayout      { VK_NULL_HANDLE };
+
+  // array of 2, 1 for vertex shader, 1 for fragment shader.
+  // vectors for each frame in flight.
+  std::array<VkDescriptorSetLayout, 2>              m_DescriptorSetLayouts;
+  std::array<std::vector<VkDescriptorSet>, 2>       m_DescriptorSets;
+  std::array<std::vector<vulkanBuffer>, 2>          m_DescriptorBuffers;
 
   std::array<VkPipelineShaderStageCreateInfo, 2>    m_ShaderStages        {};
   std::array<VkVertexInputBindingDescription, 1>    m_BindingDescription  {};
