@@ -49,14 +49,11 @@ public:
 
     // PIPELINE LAYOUTS
 
+    bool setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
+
     VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo const& CreateInfo);
 
     void destroyPipelineLayout(VkPipelineLayout& pipelineLayout);
-
-    // PIPELINE INFO (CUSTOM)
-
-    bool createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
-    void destroyPipelineInfo(vulkanPipeline& inPipeline);
 
     // Buffers
 
@@ -83,8 +80,6 @@ private:
     /// @param cpySize size of data to be copied
     /// @return true if copy successful, false otherwise
     bool copyBuffer(vulkanBuffer& dstBuffer, vulkanBuffer& srcBuffer, VkDeviceSize cpySize);
-
-    bool setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
 
     std::shared_ptr<vulkanInstance> m_pVKInst;  // shared so stuff can depend on it
     std::shared_ptr<vulkanDevice> m_pVKDevice;  // has a copy of m_pVKInst

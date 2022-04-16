@@ -79,7 +79,7 @@ int main()
     }
 
     vulkanPipeline trianglePipeline;
-    if (!pWH->createPipelineInfo(trianglePipeline,
+    if (false == upVKWin->createPipelineInfo(trianglePipeline,
       vulkanPipeline::setup
       {
         .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32 },
@@ -87,8 +87,8 @@ int main()
         .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
         .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
 
-        // TODO: move createPipelineInfo to be window specific?
-        .m_pSetLayouts{ &upVKWin->m_UniformBuffers.m_DescriptorSetLayouts },
+        .m_UniformsVert{ vulkanPipeline::createUniformInfo<float, float>() },
+        .m_UniformsFrag{ vulkanPipeline::createUniformInfo<glm::vec3>() },
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
         .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
@@ -168,8 +168,32 @@ int main()
 
         // uniform test here
         {
-          uniformVert tmpFUV{ 0.0f };
-          upVKWin->updateFixedUniformBuffer(fixedUniformBuffers::e_vert, &tmpFUV, sizeof(tmpFUV));
+          static float tmp{ 300.0f };
+          if (win0Input.isTriggered(VK_V))tmp = tmp ? 0.0f : 300.0f;
+          upVKWin->setUniform(trianglePipeline, 0, 0, &tmp, sizeof(tmp));
+          upVKWin->setUniform(trianglePipeline, 0, 1, &tmp, sizeof(tmp));
+          static glm::vec3 colMul{ 1.0f, 1.0f, 1.0f };
+          if (win0Input.isTriggered(VK_SPACE))
+          {
+            static int lazyState{ -1 };
+            switch (++lazyState)
+            {
+            case 0:
+              colMul = glm::vec3{ 0.0f, 0.0f, 0.0f };
+              break;
+            case 1:
+              colMul.r = 1.0f;
+              break;
+            case 2:
+              colMul.g = 1.0f;
+              break;
+            case 3:
+              colMul.b = 1.0f;
+              lazyState = -1;
+              break;
+            }
+          }
+          upVKWin->setUniform(trianglePipeline, 1, 0, &colMul, sizeof(colMul));
         }
 
         { // Rotating object
@@ -198,7 +222,7 @@ int main()
       // ***********************************************************************
     }
     exampleModel.destroyModel();
-    pWH->destroyPipelineInfo(trianglePipeline);
+    upVKWin->destroyPipelineInfo(trianglePipeline);
   }
 
   return 0;

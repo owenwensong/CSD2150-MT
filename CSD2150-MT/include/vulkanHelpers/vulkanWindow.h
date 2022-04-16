@@ -13,7 +13,6 @@
 #include <windowsHelpers/windowsWindow.h>
 #include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/vulkanPipeline.h>
-#include <vulkanHelpers/uniformBuffers.h>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include <memory>
@@ -73,10 +72,15 @@ public:
     /// @brief swaps front and back buffer
     void PageFlip();
 
+    // PIPELINE INFO (CUSTOM)
+
+    bool createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup);
+    void destroyPipelineInfo(vulkanPipeline& inPipeline);
+
     // any created will be stored to be auto destroyed
     bool createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo);
 
-    void updateFixedUniformBuffer(uint32_t target, void* pData, size_t dataLen);
+    void setUniform(vulkanPipeline& inPipeline, uint32_t shaderTarget, uint32_t uniformTarget, void* pData, size_t dataLen);
 
 private:
 
@@ -87,16 +91,16 @@ private:
     bool CreateDepthResources(VkExtent2D Extents) noexcept;
     bool CreateRenderPass(VkSurfaceFormatKHR& VKColorSurfaceFormat, VkFormat& VKDepthSurfaceFormat) noexcept;
     bool CreateWindowCommandBuffers() noexcept;
-    bool CreateUniformDescriptorSetLayouts() noexcept;
-    bool CreateUniformBuffers() noexcept;
-    bool CreateUniformDescriptorSets() noexcept;
+    bool CreateUniformDescriptorSetLayouts(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept;
+    bool CreateUniformBuffers(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept;
+    bool CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept;
 
     void DestroyRenderPass() noexcept;
     void DestroyPipelineData(vulkanPipelineData& inPipelineData) noexcept;
     void DestroyPipelines() noexcept;
-    void DestroyUniformDescriptorSetLayouts() noexcept;
-    void DestroyUniformBuffers() noexcept;
-    void DestroyUniformDescriptorSets() noexcept;
+    void DestroyUniformDescriptorSetLayouts(vulkanPipeline& outPipeline) noexcept;
+    void DestroyUniformBuffers(vulkanPipeline& outPipeline) noexcept;
+    void DestroyUniformDescriptorSets(vulkanPipeline& outPipeline) noexcept;
 
 public: // all public, let whoever touch it /shrug
 
@@ -114,7 +118,6 @@ public: // all public, let whoever touch it /shrug
     VkRenderPass                        m_VKRenderPass          {};
     //VkPipeline                          m_VKPipeline            {};
     std::unordered_map<vulkanPipeline*, vulkanPipelineData> m_VKPipelines{};
-    fixedUniformBuffers                 m_UniformBuffers        {};
     VkSurfaceFormatKHR                  m_VKSurfaceFormat       {};
     VkFormat                            m_VKDepthFormat         {};
     VkPresentModeKHR                    m_VKPresentMode         {};

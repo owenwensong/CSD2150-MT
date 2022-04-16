@@ -149,11 +149,6 @@ vulkanWindow::~vulkanWindow()
 
   vkDeviceWaitIdle(m_Device->m_VKDevice);
 
-  // Destroy uniform buffers
-  DestroyUniformDescriptorSets();
-  DestroyUniformBuffers();
-  DestroyUniformDescriptorSetLayouts();
-
   if (m_Frames.get())
   {
     for (uint32_t i{ 0 }, t{ m_ImageCount }; i < t; ++i)
@@ -340,9 +335,6 @@ bool vulkanWindow::Initialize(std::shared_ptr<vulkanDevice>& Device,
   }
 
   if (false == CreateOrResizeWindow())return false;
-  if (false == CreateUniformDescriptorSetLayouts())return false;
-  if (false == CreateUniformBuffers())return false;
-  if (false == CreateUniformDescriptorSets())return false;
 
   m_bfInitializeOK = 1;
   return true;
@@ -820,92 +812,162 @@ bool vulkanWindow::CreateWindowCommandBuffers() noexcept
 
 }
 
-bool vulkanWindow::CreateUniformDescriptorSetLayouts() noexcept
+bool vulkanWindow::CreateUniformDescriptorSetLayouts(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept
 {
-  std::array uboLayoutBindings{ fixedUniformBuffers::LayoutBindings };
-
-  VkDescriptorSetLayoutCreateInfo layoutInfo
+  std::vector<VkDescriptorSetLayoutBinding> uniformLayoutBindings;
+  // Vertex shader uniforms
+  uniformLayoutBindings.reserve(inSetup.m_UniformsVert.size());
+  for (auto const& x : inSetup.m_UniformsVert)
+  {
+    uniformLayoutBindings.emplace_back
+    (
+      x.m_TypeBindingID,          // binding
+      x.m_DescriptorType,         // descriptorType
+      1,                          // descriptorCount
+      VK_SHADER_STAGE_VERTEX_BIT, // stageFlags
+      VK_NULL_HANDLE              // pImmutableSamplers
+    );
+  }
+  VkDescriptorSetLayoutCreateInfo layoutCreateInfo
   {
     .sType{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO },
-    .bindingCount { 1 },
-    //.pBindings    { uboLayoutBindings.data() }
+    .bindingCount { static_cast<uint32_t>(uniformLayoutBindings.size()) },
+    .pBindings    { uniformLayoutBindings.data() }
   };
-  for (size_t i{ 0 }, t{ uboLayoutBindings.size() }; i < t; ++i)
+  if (VkResult tmpRes{ vkCreateDescriptorSetLayout(m_Device->m_VKDevice, &layoutCreateInfo, m_Device->m_pVKInst->m_pVKAllocator, &outPipeline.m_DescriptorSetLayouts[0])}; tmpRes != VK_SUCCESS)
   {
-    layoutInfo.pBindings = &uboLayoutBindings[i];
-    if (VkResult tmpRes{ vkCreateDescriptorSetLayout(m_Device->m_VKDevice, &layoutInfo, m_Device->m_pVKInst->m_pVKAllocator, &m_UniformBuffers.m_DescriptorSetLayouts[i])}; tmpRes != VK_SUCCESS)
-    {
-      printVKWarning(tmpRes, "could not create a descriptor set layout"sv, true);
-      //return false;
-    }
+    printVKWarning(tmpRes, "could not create the vertex shader's descriptor set layout"sv, true);
+    //return false;
   }
+
+  // Fragment shader uniforms
+  uniformLayoutBindings.clear();
+  uniformLayoutBindings.reserve(inSetup.m_UniformsFrag.size());
+  for (auto const& x : inSetup.m_UniformsFrag)
+  {
+    uniformLayoutBindings.emplace_back
+    (
+      x.m_TypeBindingID,            // binding
+      x.m_DescriptorType,           // descriptorType
+      1,                            // descriptorCount
+      VK_SHADER_STAGE_FRAGMENT_BIT, // stageFlags
+      VK_NULL_HANDLE                // pImmutableSamplers
+    );
+  }
+  layoutCreateInfo.bindingCount = static_cast<uint32_t>(uniformLayoutBindings.size());
+  layoutCreateInfo.pBindings = uniformLayoutBindings.data();
+  if (VkResult tmpRes{ vkCreateDescriptorSetLayout(m_Device->m_VKDevice, &layoutCreateInfo, m_Device->m_pVKInst->m_pVKAllocator, &outPipeline.m_DescriptorSetLayouts[1]) }; tmpRes != VK_SUCCESS)
+  {
+    printVKWarning(tmpRes, "could not create the fragment shader's descriptor set layout"sv, true);
+    //return false;
+  }
+
   return true;
 }
 
-bool vulkanWindow::CreateUniformBuffers() noexcept
+bool vulkanWindow::CreateUniformBuffers(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept
 {
-  if (windowHandler* pWH{ windowHandler::getPInstance() }; pWH != nullptr)
+  windowHandler* pWH{ windowHandler::getPInstance() };
+  assert(pWH != nullptr);
+  
+  std::array<std::vector<vulkanPipeline::uniformInfo> const*, 2> refHelper
   {
-    m_UniformBuffers.m_Buffers.resize(m_ImageCount);
-    for (auto& uniformBuffer : m_UniformBuffers.m_Buffers)
-    { // just print warning if these fail
-      for (size_t i{ 0 }; i < fixedUniformBuffers::e_NUMTARGETS; ++i)
+    &inSetup.m_UniformsVert,
+    &inSetup.m_UniformsFrag
+  };
+
+  for (size_t i{ 0 }, t{ refHelper.size() }; i < t; ++i)// for every shader
+  {
+    auto& DBufs{ outPipeline.m_DescriptorBuffers[i] };
+    DBufs.resize(m_ImageCount * outPipeline.m_DescriptorCounts[i]);
+    for (size_t j{ 0 }, k{ refHelper[i]->size() }; j < k; ++j)// for every uniform
+    {
+      vulkanBuffer::Setup BufferSetup
+      { // check if type sampler next time?
+        .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Uniform },
+        .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Uniform },
+        .m_Count      { 1 },
+        .m_ElemSize   { refHelper[i][0][j].m_TypeSize }
+      };
+      for (size_t l{ 0 }, m{ m_ImageCount }; l < m; ++l)// for every frame
       {
-        auto const& Setup{ fixedUniformBuffers::BufferSetups[i] };
-        if (Setup.m_ElemSize == 0 || Setup.m_Count == 0)continue;
-        if (false == pWH->createBuffer(uniformBuffer[i], Setup))
+        size_t idx{ outPipeline.m_DescriptorCounts[i] * l + j};
+        if (false == pWH->createBuffer(DBufs[idx], BufferSetup))
         {
-          printWarning("failed to create a uniform buffer"sv);
+          printWarning("Failed to create a uniform buffer for a shader"sv);
         }
       }
     }
   }
-  else
-  { // should never happen
-    printWarning("window handler not available while creating uniform buffers"sv, true);
-    return false;
-  }
+
   return true;
 }
 
-bool vulkanWindow::CreateUniformDescriptorSets() noexcept
+bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup) noexcept
 {
-  m_UniformBuffers.m_DescriptorSets.resize(m_ImageCount);
-  for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+
+  std::array<std::vector<vulkanPipeline::uniformInfo> const*, 2> refHelper
   {
-    std::scoped_lock lock{ m_Device->m_LockedVKDescriptorPool };
-    VkDescriptorSetAllocateInfo allocInfo
-    {
-      .sType{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
-      .descriptorPool     { m_Device->m_LockedVKDescriptorPool.get() },
-      .descriptorSetCount { static_cast<uint32_t>(m_UniformBuffers.m_DescriptorSetLayouts.size()) },
-      .pSetLayouts        { m_UniformBuffers.m_DescriptorSetLayouts.data() }
-    };
-    if (VkResult tmpRes{ vkAllocateDescriptorSets(m_Device->m_VKDevice, &allocInfo, m_UniformBuffers.m_DescriptorSets[i].data())}; tmpRes != VK_SUCCESS)
+    &inSetup.m_UniformsVert,
+    &inSetup.m_UniformsFrag
+  };
+
+  outPipeline.m_DescriptorSets.resize(m_ImageCount);
+  std::scoped_lock lock{ m_Device->m_LockedVKDescriptorPool };
+  VkDescriptorSetAllocateInfo allocInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO },
+    .descriptorPool     { m_Device->m_LockedVKDescriptorPool.get() },
+    .descriptorSetCount { static_cast<uint32_t>(outPipeline.m_DescriptorSetLayouts.size()) },
+    .pSetLayouts        { outPipeline.m_DescriptorSetLayouts.data()}
+  };
+  for (size_t l{ 0 }, m{ m_ImageCount }; l < m; ++l)
+  {
+    auto& DSets{ outPipeline.m_DescriptorSets[l] };
+    if (VkResult tmpRes{ vkAllocateDescriptorSets(m_Device->m_VKDevice, &allocInfo, DSets.data()) }; tmpRes != VK_SUCCESS)
     {
       printVKWarning(tmpRes, "failed to create a uniform descriptor set"sv, true);
       return false;
     }
-    for (size_t j{ 0 }, k{ m_UniformBuffers.m_DescriptorSets.size() }; j < k; ++j)
+
+    for (size_t i{ 0 }, t{ refHelper.size() }; i < t; ++i)// for every shader
     {
-      VkDescriptorBufferInfo bufferInfo
+      VkDescriptorSet& DSet{ DSets[i] };
+
+      std::vector<VkDescriptorBufferInfo> bufferInfos;
+      std::vector<VkWriteDescriptorSet> descriptorWrites;
+      // ensure pointer validity by making sure no reallocs take place
+      bufferInfos.reserve(outPipeline.m_DescriptorCounts[i]);      
+      descriptorWrites.reserve(outPipeline.m_DescriptorCounts[i]);
+
+      for (size_t j{ 0 }, k{ refHelper[i]->size() }; j < k; ++j)// for every uniform
       {
-        .buffer { m_UniformBuffers.m_Buffers[i][j].m_Buffer },
-        .offset { 0 },
-        .range  { fixedUniformBuffers::StructSizes[j] }
-      };
-      VkWriteDescriptorSet descriptorWrite
-      {
-        .sType{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
-        .dstSet         { m_UniformBuffers.m_DescriptorSets[i][j] },
-        .dstBinding     { 0 },
-        .dstArrayElement{ 0 },
-        .descriptorCount{ 1 },
-        .descriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
-        .pBufferInfo    { &bufferInfo }
-      };
-      vkUpdateDescriptorSets(m_Device->m_VKDevice, 1, &descriptorWrite, 0, nullptr);
+        size_t bufferIndex{ outPipeline.m_DescriptorCounts[i] * l + j };
+
+        bufferInfos.emplace_back(VkDescriptorBufferInfo
+        {
+          .buffer { outPipeline.m_DescriptorBuffers[i][bufferIndex].m_Buffer },
+          .offset { 0 },
+          .range  { refHelper[i][0][j].m_TypeSize }
+        });
+        descriptorWrites.emplace_back(VkWriteDescriptorSet
+        {
+          .sType{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
+          .dstSet           { DSet },
+          .dstBinding       { refHelper[i][0][j].m_TypeBindingID },
+          .dstArrayElement  { 0 },
+          .descriptorCount  { 1 },
+          .descriptorType   { refHelper[i][0][j].m_DescriptorType },
+          .pImageInfo       { VK_NULL_HANDLE },
+          .pBufferInfo      { &bufferInfos.back() },
+          .pTexelBufferView { VK_NULL_HANDLE }
+        });
+      }
+
+      vkUpdateDescriptorSets(m_Device->m_VKDevice, outPipeline.m_DescriptorCounts[i], descriptorWrites.data(), 0, nullptr);
+
     }
+
   }
     
   return true;
@@ -936,9 +998,9 @@ void vulkanWindow::DestroyPipelines() noexcept
   m_VKPipelines.clear();
 }
 
-void vulkanWindow::DestroyUniformDescriptorSetLayouts() noexcept
+void vulkanWindow::DestroyUniformDescriptorSetLayouts(vulkanPipeline& outPipeline) noexcept
 {
-  for (auto& x : m_UniformBuffers.m_DescriptorSetLayouts)
+  for (auto& x : outPipeline.m_DescriptorSetLayouts)
   {
     if (x == VK_NULL_HANDLE)continue;
     vkDestroyDescriptorSetLayout(m_Device->m_VKDevice, x, m_Device->m_pVKInst->m_pVKAllocator);
@@ -946,27 +1008,28 @@ void vulkanWindow::DestroyUniformDescriptorSetLayouts() noexcept
   }
 }
 
-void vulkanWindow::DestroyUniformBuffers() noexcept
+void vulkanWindow::DestroyUniformBuffers(vulkanPipeline& outPipeline) noexcept
 {
   windowHandler* pWH{ windowHandler::getPInstance() };
   assert(pWH != nullptr);
-  for (auto& frameUniformBuffers : m_UniformBuffers.m_Buffers)
+  for (auto& shaderBuffers : outPipeline.m_DescriptorBuffers)
   {
-    for (auto& uniformBuffer : frameUniformBuffers)pWH->destroyBuffer(uniformBuffer);
+    for (auto& shaderBuf : shaderBuffers)pWH->destroyBuffer(shaderBuf);
+    shaderBuffers.clear();
   }
-  m_UniformBuffers.m_Buffers.clear();
 }
 
-void vulkanWindow::DestroyUniformDescriptorSets() noexcept
+void vulkanWindow::DestroyUniformDescriptorSets(vulkanPipeline& outPipeline) noexcept
 {
-  for (uint32_t i{ 0 }; i < m_ImageCount; ++i)
+  std::scoped_lock lock{ m_Device->m_LockedVKDescriptorPool };
+  for (auto& DSets : outPipeline.m_DescriptorSets)
   {
-    std::scoped_lock lock{ m_Device->m_LockedVKDescriptorPool };
-    if (VkResult tmpRes{ vkFreeDescriptorSets(m_Device->m_VKDevice, m_Device->m_LockedVKDescriptorPool.get(), static_cast<uint32_t>(m_UniformBuffers.m_DescriptorSetLayouts.size()), m_UniformBuffers.m_DescriptorSets[i].data()) }; tmpRes != VK_SUCCESS)
+    if (VkResult tmpRes{ vkFreeDescriptorSets(m_Device->m_VKDevice, m_Device->m_LockedVKDescriptorPool.get(), static_cast<uint32_t>(DSets.size()), DSets.data())}; tmpRes != VK_SUCCESS)
     {
       printVKWarning(tmpRes, "failed to create a uniform descriptor set"sv, true);
     }
   }
+  outPipeline.m_DescriptorSets.clear();
 }
 
 VkCommandBuffer vulkanWindow::FrameBegin()
@@ -1151,6 +1214,209 @@ void vulkanWindow::PageFlip()
 
 }
 
+bool vulkanWindow::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipeline::setup const& inSetup)
+{
+  windowHandler* pWH{ windowHandler::getPInstance() };
+  assert(pWH != nullptr);
+
+  destroyPipelineInfo(outPipeline); // make sure it's fresh boi
+
+  if (inSetup.m_VertexBindingMode == vulkanPipeline::E_VERTEX_BINDING_MODE::UNDEFINED)
+  {
+    printWarning("Cannot create the pipeline layout. Vertex binding mode not defined."sv, true);
+    return false;
+  }
+
+  outPipeline.m_ShaderVert = pWH->createShaderModule(inSetup.m_PathShaderVert.data());
+  if (outPipeline.m_ShaderVert == VK_NULL_HANDLE)
+  {
+    std::string msg{ "Cannot create pipeline layout. Vertex shader failed to create from: " };
+    msg.append(inSetup.m_PathShaderVert);
+    printWarning(msg, true);
+    destroyPipelineInfo(outPipeline);
+    return false;
+  }
+  outPipeline.m_ShaderFrag = pWH->createShaderModule(inSetup.m_PathShaderFrag.data());
+  if (outPipeline.m_ShaderFrag == VK_NULL_HANDLE)
+  {
+    std::string msg{ "Cannot create pipeline layout. Fragment shader failed to create from: " };
+    msg.append(inSetup.m_PathShaderFrag);
+    printWarning(msg, true);
+    destroyPipelineInfo(outPipeline);
+    return false;
+  }
+
+  outPipeline.m_DescriptorCounts[0] = static_cast<uint32_t>(inSetup.m_UniformsVert.size());
+  outPipeline.m_DescriptorCounts[1] = static_cast<uint32_t>(inSetup.m_UniformsFrag.size());
+  if (false == CreateUniformDescriptorSetLayouts(outPipeline, inSetup))
+  {
+    printWarning("Failed to create uniform descriptor set layouts");
+    return false;
+  }
+  if (false == CreateUniformBuffers(outPipeline, inSetup))
+  {
+    printWarning("Failed to create uniform buffers");
+    return false;
+  }
+  if (false == CreateUniformDescriptorSets(outPipeline, inSetup))
+  {
+    printWarning("Failed to create uniform descriptor sets");
+    return false;
+  }
+
+  { // local scope for VkPipelineLayout
+    VkPipelineLayoutCreateInfo CreateInfo
+    {
+      .sType{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
+      .setLayoutCount         { static_cast<uint32_t>(outPipeline.m_DescriptorSetLayouts.size()) },
+      .pSetLayouts            { outPipeline.m_DescriptorSetLayouts.data() },
+      .pushConstantRangeCount { 0 },      // default to 0
+      .pPushConstantRanges    { nullptr } // default to nullptr
+    };
+
+    // push constant stuff
+    if (inSetup.m_PushConstantRangeVert.size != 0)
+    {
+      CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeVert;
+      CreateInfo.pushConstantRangeCount = (inSetup.m_PushConstantRangeFrag.size ? 2 : 1);
+    }
+    else if (inSetup.m_PushConstantRangeFrag.size != 0)
+    {
+      CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeFrag;
+      CreateInfo.pushConstantRangeCount = 1;
+    }
+
+    outPipeline.m_PipelineLayout = pWH->createPipelineLayout(CreateInfo);
+    if (outPipeline.m_PipelineLayout == VK_NULL_HANDLE)
+    {
+      printWarning("Cannot create pipeline layout. PipelineLayout creation failed", true);
+      destroyPipelineInfo(outPipeline);
+      return false;
+    }
+  }
+
+  outPipeline.m_ShaderStages[0] = VkPipelineShaderStageCreateInfo
+  {
+    .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+    .stage { VK_SHADER_STAGE_VERTEX_BIT },
+    .module{ outPipeline.m_ShaderVert },
+    .pName { "main" }
+  };
+  outPipeline.m_ShaderStages[1] = VkPipelineShaderStageCreateInfo
+  {
+    .sType { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO },
+    .stage { VK_SHADER_STAGE_FRAGMENT_BIT },
+    .module{ outPipeline.m_ShaderFrag },
+    .pName { "main" }
+  };
+
+  if (false == pWH->setupVertexInputInfo(outPipeline, inSetup))
+  {
+    destroyPipelineInfo(outPipeline);
+    printWarning("could not create pipeline info, failed to setup vertex input info."sv, true);
+    return false;
+  }
+
+  outPipeline.m_InputAssembly = VkPipelineInputAssemblyStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO },
+    .topology								{ VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
+    .primitiveRestartEnable	{ VK_FALSE }
+  };
+
+  outPipeline.m_Rasterizer = VkPipelineRasterizationStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO },
+    .depthClampEnable				{ VK_FALSE },	// clamp instead of discarding stuff outside the near/far planes
+    .rasterizerDiscardEnable{ VK_FALSE },
+    .polygonMode						{ VK_POLYGON_MODE_FILL },
+    .cullMode								{ VK_CULL_MODE_BACK_BIT },	// back face culling
+    .frontFace							{ VK_FRONT_FACE_COUNTER_CLOCKWISE },
+    .depthBiasEnable				{ VK_FALSE },
+    .depthBiasConstantFactor{ 0.0f },
+    .depthBiasClamp					{ 0.0f },
+    .depthBiasSlopeFactor		{ 0.0f },
+    .lineWidth							{ 1.0f }
+  };
+
+  outPipeline.m_Multisampling = VkPipelineMultisampleStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO },
+    .rasterizationSamples		{ VK_SAMPLE_COUNT_1_BIT },
+    .sampleShadingEnable		{ VK_FALSE },
+    .minSampleShading				{ 1.0f },
+    .pSampleMask						{ nullptr },
+    .alphaToCoverageEnable	{ VK_FALSE },
+    .alphaToOneEnable				{ VK_FALSE }
+  };
+
+  outPipeline.m_DepthStencilState = VkPipelineDepthStencilStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO },
+    .pNext{ nullptr },
+    .flags{ 0 },
+    .depthTestEnable{ VK_TRUE },		// make this an option next time?
+    .depthWriteEnable{ VK_TRUE },		// make this an option next time?
+    .depthCompareOp{ VK_COMPARE_OP_LESS_OR_EQUAL },
+    .depthBoundsTestEnable{ VK_TRUE },	// make this an option next time?
+    .stencilTestEnable{ VK_TRUE },			// make this an option next time?
+    .minDepthBounds{ 0.0f },
+    .maxDepthBounds{ 1.0f }
+  };
+
+  outPipeline.m_ColorBlendAttachment = VkPipelineColorBlendAttachmentState
+  {
+    .blendEnable				{ VK_TRUE },		// should it be false?
+    .srcColorBlendFactor{ VK_BLEND_FACTOR_SRC_ALPHA },
+    .dstColorBlendFactor{ VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA },
+    .colorBlendOp				{ VK_BLEND_OP_ADD },
+    .srcAlphaBlendFactor{ VK_BLEND_FACTOR_SRC_ALPHA },
+    .dstAlphaBlendFactor{ VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA },
+    .alphaBlendOp{},
+    .colorWriteMask
+    {
+      VK_COLOR_COMPONENT_R_BIT |
+      VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT |
+      VK_COLOR_COMPONENT_A_BIT
+    }
+  };
+
+  outPipeline.m_ColorBlending = VkPipelineColorBlendStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO },
+    .logicOpEnable	{ VK_TRUE },
+    .logicOp				{ VK_LOGIC_OP_COPY },
+    .attachmentCount{ 1 },
+    .pAttachments		{ &outPipeline.m_ColorBlendAttachment },
+    .blendConstants { 0.0f, 0.0f, 0.0f, 0.0f }	// ????
+  };
+
+  outPipeline.m_DynamicStates[0] = VK_DYNAMIC_STATE_VIEWPORT;
+  outPipeline.m_DynamicStates[1] = VK_DYNAMIC_STATE_SCISSOR;
+
+  outPipeline.m_DynamicStateCreateInfo = VkPipelineDynamicStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO },
+    .dynamicStateCount	{ static_cast<uint32_t>(outPipeline.m_DynamicStates.size()) },
+    .pDynamicStates			{ outPipeline.m_DynamicStates.data() }
+  };
+
+  return true;
+}
+
+void vulkanWindow::destroyPipelineInfo(vulkanPipeline& inPipeline)
+{
+  windowHandler* pWH{ windowHandler::getPInstance() };
+  assert(pWH != nullptr);
+  DestroyUniformDescriptorSets(inPipeline);
+  DestroyUniformBuffers(inPipeline);
+  DestroyUniformDescriptorSetLayouts(inPipeline);
+  pWH->destroyPipelineLayout(inPipeline.m_PipelineLayout);
+  pWH->destroyShaderModule(inPipeline.m_ShaderFrag);
+  pWH->destroyShaderModule(inPipeline.m_ShaderVert);
+}
+
 bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo)
 {
   if (pipelineCustomCreateInfo.m_PipelineLayout == VK_NULL_HANDLE)
@@ -1218,15 +1484,15 @@ bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo
   // Bind pipeline
   vkCmdBindPipeline(Frame.m_VKCommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineToSet);
 
-  // Bind fixed uniform buffers
+  auto& frameDescriptorSets{ pipelineCustomCreateInfo.m_DescriptorSets[m_FrameIndex] };
   vkCmdBindDescriptorSets
   (
     Frame.m_VKCommandBuffer,
     VK_PIPELINE_BIND_POINT_GRAPHICS,
     pipelineCustomCreateInfo.m_PipelineLayout,
-    0,
-    static_cast<uint32_t>(m_UniformBuffers.m_DescriptorSets[m_FrameIndex].size()),
-    m_UniformBuffers.m_DescriptorSets[m_FrameIndex].data(),
+    0,// first set
+    static_cast<uint32_t>(frameDescriptorSets.size()),
+    frameDescriptorSets.data(),
     0,
     nullptr
   );
@@ -1235,15 +1501,16 @@ bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo
 
 }
 
-void vulkanWindow::updateFixedUniformBuffer(uint32_t target, void* pData, size_t dataLen)
+void vulkanWindow::setUniform(vulkanPipeline& inPipeline, uint32_t shaderTarget, uint32_t uniformTarget, void* pData, size_t dataLen)
 {
-  assert(target < fixedUniformBuffers::e_NUMTARGETS && pData && dataLen <= fixedUniformBuffers::StructSizes[target]);
+  vulkanBuffer& targetBuffer{ inPipeline.m_DescriptorBuffers[shaderTarget][m_FrameIndex * inPipeline.m_DescriptorCounts[shaderTarget] + uniformTarget] };
+  assert(pData && dataLen <= targetBuffer.m_Settings.m_ElemSize * targetBuffer.m_Settings.m_Count);
   void* pDst{ nullptr };
-  if (VkResult tmpRes{ vkMapMemory(m_Device->m_VKDevice, m_UniformBuffers.m_Buffers[m_FrameIndex][target].m_BufferMemory, 0, fixedUniformBuffers::StructSizes[target], 0, &pDst)}; tmpRes != VK_SUCCESS)
+  if (VkResult tmpRes{ vkMapMemory(m_Device->m_VKDevice, targetBuffer.m_BufferMemory, 0, dataLen, 0, &pDst)}; tmpRes != VK_SUCCESS)
   {
     printVKWarning(tmpRes, "Failed to map memory"sv, true);
     return;
   }
   std::memcpy(pDst, pData, dataLen);
-  vkUnmapMemory(m_Device->m_VKDevice, m_UniformBuffers.m_Buffers[m_FrameIndex][target].m_BufferMemory);
+  vkUnmapMemory(m_Device->m_VKDevice, targetBuffer.m_BufferMemory);
 }

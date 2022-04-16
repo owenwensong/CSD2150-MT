@@ -1,9 +1,14 @@
 #version 450
 
-layout(binding = 0) uniform fixedUniform
+layout (set = 0, binding = 0) uniform testy0
 {
-  float offsetTest;
-} FU;
+  float offset;
+} u0;
+
+layout (set = 0, binding = 1) uniform testy1
+{
+  float offset;
+} u1;
 
 layout(location = 0) in vec3 vertPos;
 layout(location = 1) in vec2 vertTex;
@@ -17,6 +22,6 @@ layout(push_constant) uniform constants
 
 void main()
 {
-  gl_Position = PushConstants.xform * vec4(vertPos.x + FU.offsetTest, vertPos.y, vertPos.z , 1.0);
+  gl_Position = PushConstants.xform * vec4(vertPos.x + u0.offset, vertPos.y + u1.offset, vertPos.z , 1.0);
   fragColor = vec3(vertTex, 1.0);
 }

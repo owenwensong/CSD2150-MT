@@ -15,7 +15,6 @@
 #include <string_view>
 #include <array>
 #include <vulkanHelpers/vulkanBuffer.h>
-#include <vulkanHelpers/uniformBuffers.h>
 
 struct vulkanPipeline
 {
@@ -49,7 +48,7 @@ struct vulkanPipeline
       .m_TypeBindingID  { firstBindingID++ }, // keep incrementing bind ID
       .m_TypeSize       { sizeof(Ts) },       // variadic unpacked size
       .m_TypeAlign      { alignof(Ts) },      // variadic unpacked alignment
-      .m_DescriptorType { /*std::is_same_v<Ts, samplerType>*/ }
+      .m_DescriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER/*std::is_same_v<Ts, samplerType>*/ }
     }... };
   }
 
@@ -80,8 +79,9 @@ struct vulkanPipeline
     std::string_view m_PathShaderVert{  };
     std::string_view m_PathShaderFrag{  };
 
-    // hack because why can't anyone be straight with where descriptor sets go
-    decltype(fixedUniformBuffers::m_DescriptorSetLayouts) const* m_pSetLayouts{ nullptr };
+    // Uniform buffers
+    std::vector<uniformInfo> m_UniformsVert{ createUniformInfo<>() };
+    std::vector<uniformInfo> m_UniformsFrag{ createUniformInfo<>() };
 
     // will be used directly for pPushConstantRanges, don't move it around.
     VkPushConstantRange m_PushConstantRangeVert{ createPushConstantInfo<>(VK_SHADER_STAGE_VERTEX_BIT) };
@@ -94,10 +94,15 @@ struct vulkanPipeline
   VkPipelineLayout                                  m_PipelineLayout      { VK_NULL_HANDLE };
 
   // array of 2, 1 for vertex shader, 1 for fragment shader.
-  // vectors for each frame in flight.
-  std::array<VkDescriptorSetLayout, 2>              m_DescriptorSetLayouts;
-  std::array<std::vector<VkDescriptorSet>, 2>       m_DescriptorSets;
-  std::array<std::vector<vulkanBuffer>, 2>          m_DescriptorBuffers;
+  // vectors for each frame in flight which uniform
+  // access determined by uniform count * curr frame + idx
+  // EG: A B C D A B C D <- 4 uniforms, 2 img count
+  // ARR:0 1 2 3 4 5 6 7 <- 8 buffers, 2 for each uniform (2 frames in flight)
+  std::array<uint32_t, 2>                           m_DescriptorCounts{};
+  std::array<VkDescriptorSetLayout, 2>              m_DescriptorSetLayouts{ VK_NULL_HANDLE, VK_NULL_HANDLE };
+  std::array<std::vector<vulkanBuffer>, 2>          m_DescriptorBuffers{};
+  std::vector<std::array<VkDescriptorSet, 2>>       m_DescriptorSets{};
+  // vector of descriptorsets arrays, each element of the vector is per frame 
 
   std::array<VkPipelineShaderStageCreateInfo, 2>    m_ShaderStages        {};
   std::array<VkVertexInputBindingDescription, 1>    m_BindingDescription  {};
