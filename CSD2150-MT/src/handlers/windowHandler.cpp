@@ -128,6 +128,72 @@ void windowHandler::destroyPipelineLayout(VkPipelineLayout& pipelineLayout)
   pipelineLayout = VK_NULL_HANDLE;
 }
 
+VkCommandBuffer windowHandler::beginOneTimeSubmitCommand(bool useMainCommandPool)
+{
+  VkCommandPool cmdPool{ useMainCommandPool ? m_pVKDevice->m_TransferCommandSpecialPool : m_pVKDevice->m_TransferCommandPool };
+  VkCommandBufferAllocateInfo AllocInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
+    .commandPool        { cmdPool },
+    .level              { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
+    .commandBufferCount { 1 }
+  };
+  VkCommandBuffer retval;
+  if (VkResult tmpRes{ vkAllocateCommandBuffers(m_pVKDevice->m_VKDevice, &AllocInfo, &retval) }; tmpRes != VK_SUCCESS)
+  {
+    printVKWarning(tmpRes, "failed to allocate one time submit command buffer"sv, true);
+    return VK_NULL_HANDLE;
+  }
+
+  {
+    VkCommandBufferBeginInfo BeginInfo
+    {
+      .sType{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
+      .flags{ VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT }
+    };
+    if (VkResult tmpRes{ vkBeginCommandBuffer(retval, &BeginInfo) }; tmpRes != VK_SUCCESS)
+    {
+      vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, cmdPool, 1, &retval);
+      printVKWarning(tmpRes, "failed to begin one time submit command buffer"sv, true);
+      return VK_NULL_HANDLE;
+    }
+  }
+
+  return retval;
+}
+
+void windowHandler::endOneTimeSubmitCommand(VkCommandBuffer toEnd, bool useMainCommandPool)
+{
+  VkCommandPool cmdPool{ useMainCommandPool ? m_pVKDevice->m_TransferCommandSpecialPool : m_pVKDevice->m_TransferCommandPool };
+  auto& lockableQueue{ useMainCommandPool ? m_pVKDevice->m_VKMainQueue : m_pVKDevice->m_VKTransferQueue };
+  if (VkResult tmpRes{ vkEndCommandBuffer(toEnd) }; tmpRes != VK_SUCCESS)
+  {
+    vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, cmdPool, 1, &toEnd);
+    printVKWarning(tmpRes, "failed to end transfer command buffer"sv, true);
+    return;
+  }
+  VkSubmitInfo SubmitInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_SUBMIT_INFO },
+    .commandBufferCount { 1 },
+    .pCommandBuffers    { &toEnd }
+  };
+  std::scoped_lock Lk{ lockableQueue };
+  if (VkResult tmpRes{ vkQueueSubmit(lockableQueue.get(), 1, &SubmitInfo, VK_NULL_HANDLE) }; tmpRes != VK_SUCCESS)
+  {
+    vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, cmdPool, 1, &toEnd);
+    printVKWarning(tmpRes, "failed to submit transfer queue"sv, true);
+    return;
+  }
+  if (VkResult tmpRes{ vkQueueWaitIdle(lockableQueue.get()) }; tmpRes != VK_SUCCESS)
+  {
+    vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, cmdPool, 1, &toEnd);
+    printVKWarning(tmpRes, "failed to wait for transfer queue"sv, true);
+    return;
+  }
+  vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, cmdPool, 1, &toEnd);
+}
+
 bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, std::vector<void*> const& srcs, std::vector<VkDeviceSize> const& srcLens)
 { 
   uint32_t totalSrcLen{ 0 };
@@ -174,34 +240,7 @@ bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, std::vector<void*> co
 
 bool windowHandler::copyBuffer(vulkanBuffer& dstBuffer, vulkanBuffer& srcBuffer, VkDeviceSize cpySize)
 {
-  VkCommandBufferAllocateInfo AllocInfo
-  {
-    .sType{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO },
-    .commandPool        { m_pVKDevice->m_TransferCommandPool },
-    .level              { VK_COMMAND_BUFFER_LEVEL_PRIMARY },
-    .commandBufferCount { 1 }
-  };
-  VkCommandBuffer transferCmdBuffer;
-  if (VkResult tmpRes{ vkAllocateCommandBuffers(m_pVKDevice->m_VKDevice, &AllocInfo, &transferCmdBuffer) }; tmpRes != VK_SUCCESS)
-  {
-    printVKWarning(tmpRes, "failed to allocate transfer command buffer"sv, true);
-    return false;
-  }
-
-  {
-    VkCommandBufferBeginInfo BeginInfo
-    {
-      .sType{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO },
-      .flags{ VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT }
-    };
-    if (VkResult tmpRes{ vkBeginCommandBuffer(transferCmdBuffer, &BeginInfo) }; tmpRes != VK_SUCCESS)
-    {
-      vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, m_pVKDevice->m_TransferCommandPool, 1, &transferCmdBuffer);
-      printVKWarning(tmpRes, "failed to begin transfer command buffer"sv, true);
-      return false;
-    }
-  }
-
+  if (VkCommandBuffer transferCmdBuffer{ beginOneTimeSubmitCommand() }; transferCmdBuffer != VK_NULL_HANDLE)
   {
     VkBufferCopy copyRegion
     {
@@ -210,37 +249,8 @@ bool windowHandler::copyBuffer(vulkanBuffer& dstBuffer, vulkanBuffer& srcBuffer,
       .size{ cpySize }
     };
     vkCmdCopyBuffer(transferCmdBuffer, srcBuffer.m_Buffer, dstBuffer.m_Buffer, 1, &copyRegion);
-    if (VkResult tmpRes{ vkEndCommandBuffer(transferCmdBuffer) }; tmpRes != VK_SUCCESS)
-    {
-      vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, m_pVKDevice->m_TransferCommandPool, 1, &transferCmdBuffer);
-      printVKWarning(tmpRes, "failed to end transfer command buffer"sv, true);
-      return false;
-    }
+    endOneTimeSubmitCommand(transferCmdBuffer);
   }
-
-  {
-    VkSubmitInfo SubmitInfo
-    {
-      .sType{ VK_STRUCTURE_TYPE_SUBMIT_INFO },
-      .commandBufferCount { 1 },
-      .pCommandBuffers    { &transferCmdBuffer }
-    };
-    std::scoped_lock Lk{ m_pVKDevice->m_VKTransferQueue };
-    if (VkResult tmpRes{ vkQueueSubmit(m_pVKDevice->m_VKTransferQueue.get(), 1, &SubmitInfo, VK_NULL_HANDLE) }; tmpRes != VK_SUCCESS)
-    {
-      vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, m_pVKDevice->m_TransferCommandPool, 1, &transferCmdBuffer);
-      printVKWarning(tmpRes, "failed to submit transfer queue"sv, true);
-      return false;
-    }
-    if (VkResult tmpRes{ vkQueueWaitIdle(m_pVKDevice->m_VKTransferQueue.get()) }; tmpRes != VK_SUCCESS)
-    {
-      vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, m_pVKDevice->m_TransferCommandPool, 1, &transferCmdBuffer);
-      printVKWarning(tmpRes, "failed to wait for transfer queue"sv, true);
-      return false;
-    }
-  }
-
-  vkFreeCommandBuffers(m_pVKDevice->m_VKDevice, m_pVKDevice->m_TransferCommandPool, 1, &transferCmdBuffer);
   return true;
 }
 

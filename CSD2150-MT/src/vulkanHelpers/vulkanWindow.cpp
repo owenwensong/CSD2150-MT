@@ -11,6 +11,7 @@
 #include <vulkanHelpers/vulkanWindow.h>
 #include <vulkan/vulkan_win32.h>
 #include <iostream> // for wcout
+#include <variant>  // descriptor variants
 #include <vector>
 #include <span>
 
@@ -882,8 +883,12 @@ bool vulkanWindow::CreateUniformBuffers(vulkanPipeline& outPipeline, vulkanPipel
     DBufs.resize(m_ImageCount * outPipeline.m_DescriptorCounts[i]);
     for (size_t j{ 0 }, k{ refHelper[i]->size() }; j < k; ++j)// for every uniform
     {
+      if (VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == refHelper[i][0][j].m_DescriptorType)
+      {
+        continue;
+      }
       vulkanBuffer::Setup BufferSetup
-      { // check if type sampler next time?
+      {
         .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Uniform },
         .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Uniform },
         .m_Count      { 1 },
@@ -934,22 +939,43 @@ bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulk
     {
       VkDescriptorSet& DSet{ DSets[i] };
 
-      std::vector<VkDescriptorBufferInfo> bufferInfos;
+      std::vector<std::variant<VkDescriptorBufferInfo, VkDescriptorImageInfo>> bufferInfos;
       std::vector<VkWriteDescriptorSet> descriptorWrites;
       // ensure pointer validity by making sure no reallocs take place
       bufferInfos.reserve(outPipeline.m_DescriptorCounts[i]);      
       descriptorWrites.reserve(outPipeline.m_DescriptorCounts[i]);
 
+      size_t samplerID{ 0 };
+
       for (size_t j{ 0 }, k{ refHelper[i]->size() }; j < k; ++j)// for every uniform
       {
         size_t bufferIndex{ outPipeline.m_DescriptorCounts[i] * l + j };
 
-        bufferInfos.emplace_back(VkDescriptorBufferInfo
+        bool isSampler{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == refHelper[i][0][j].m_DescriptorType };
+
+        if (false == isSampler)
         {
-          .buffer { outPipeline.m_DescriptorBuffers[i][bufferIndex].m_Buffer },
-          .offset { 0 },
-          .range  { refHelper[i][0][j].m_TypeSize }
-        });
+          bufferInfos.emplace_back(VkDescriptorBufferInfo
+          {
+            .buffer { outPipeline.m_DescriptorBuffers[i][bufferIndex].m_Buffer },
+            .offset { 0 },
+            .range  { refHelper[i][0][j].m_TypeSize }
+          });
+        }
+        else if (vulkanTexture* pTex{ inSetup.m_pTextures[samplerID++] }; pTex != nullptr)
+        {
+          bufferInfos.emplace_back(VkDescriptorImageInfo{
+            .sampler    { pTex->m_Sampler },
+            .imageView  { pTex->m_View },
+            .imageLayout{ VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+          });
+        }
+        else
+        {
+          printWarning("a provided texture was nullptr"sv, true);
+          return false;
+        }
+        
         descriptorWrites.emplace_back(VkWriteDescriptorSet
         {
           .sType{ VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET },
@@ -958,8 +984,8 @@ bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulk
           .dstArrayElement  { 0 },
           .descriptorCount  { 1 },
           .descriptorType   { refHelper[i][0][j].m_DescriptorType },
-          .pImageInfo       { VK_NULL_HANDLE },
-          .pBufferInfo      { &bufferInfos.back() },
+          .pImageInfo       { isSampler ? &std::get<1>(bufferInfos.back()) : VK_NULL_HANDLE },
+          .pBufferInfo      { isSampler ? VK_NULL_HANDLE : &std::get<0>(bufferInfos.back()) },
           .pTexelBufferView { VK_NULL_HANDLE }
         });
       }
@@ -1248,19 +1274,45 @@ bool vulkanWindow::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipelin
 
   outPipeline.m_DescriptorCounts[0] = static_cast<uint32_t>(inSetup.m_UniformsVert.size());
   outPipeline.m_DescriptorCounts[1] = static_cast<uint32_t>(inSetup.m_UniformsFrag.size());
+  
+  for (auto const& x : inSetup.m_UniformsVert)
+  {
+    if (x.m_DescriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+    {
+      printWarning("No support for samplers in vertex stage"sv, true);
+      return false;
+    }
+  }
+
+  {
+    size_t numSamplers{ 0 };
+    for (auto const& x : inSetup.m_UniformsFrag)
+    {
+      if (x.m_DescriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+      {
+        ++numSamplers;
+      }
+    }
+    if (numSamplers != inSetup.m_pTextures.size())
+    {
+      printWarning("uniform info number of samplers and provided textures mismatched!"sv, true);
+      return false;
+    }
+  }
+  
   if (false == CreateUniformDescriptorSetLayouts(outPipeline, inSetup))
   {
-    printWarning("Failed to create uniform descriptor set layouts");
+    printWarning("Failed to create uniform descriptor set layouts"sv);
     return false;
   }
   if (false == CreateUniformBuffers(outPipeline, inSetup))
   {
-    printWarning("Failed to create uniform buffers");
+    printWarning("Failed to create uniform buffers"sv);
     return false;
   }
   if (false == CreateUniformDescriptorSets(outPipeline, inSetup))
   {
-    printWarning("Failed to create uniform descriptor sets");
+    printWarning("Failed to create uniform descriptor sets"sv);
     return false;
   }
 

@@ -15,6 +15,7 @@
 #include <string_view>
 #include <array>
 #include <vulkanHelpers/vulkanBuffer.h>
+#include <vulkanHelpers/vulkanTexture.h>  // to act as sampler wrapper
 
 struct vulkanPipeline
 {
@@ -48,7 +49,12 @@ struct vulkanPipeline
       .m_TypeBindingID  { firstBindingID++ }, // keep incrementing bind ID
       .m_TypeSize       { sizeof(Ts) },       // variadic unpacked size
       .m_TypeAlign      { alignof(Ts) },      // variadic unpacked alignment
-      .m_DescriptorType { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER/*std::is_same_v<Ts, samplerType>*/ }
+      .m_DescriptorType
+      {
+        std::is_same_v<Ts, vulkanTexture> ?
+        VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER :
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+      }
     }... };
   }
 
@@ -82,6 +88,9 @@ struct vulkanPipeline
     // Uniform buffers
     std::vector<uniformInfo> m_UniformsVert{ createUniformInfo<>() };
     std::vector<uniformInfo> m_UniformsFrag{ createUniformInfo<>() };
+    
+    // Samplers
+    std::vector<vulkanTexture*> m_pTextures{  };
 
     // will be used directly for pPushConstantRanges, don't move it around.
     VkPushConstantRange m_PushConstantRangeVert{ createPushConstantInfo<>(VK_SHADER_STAGE_VERTEX_BIT) };

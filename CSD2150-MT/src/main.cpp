@@ -67,6 +67,16 @@ int main()
     return -3;
   }
 
+  vulkanTexture testTex;
+  pWH->createTexture
+  (
+    testTex,
+    vulkanTexture::Setup
+    {
+      .m_Path{ "../Assets/Textures/Skull/TD_Checker_Base_Color.dds" }
+    }
+  );
+
   if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_ClearColorR{ 0.5f }, .m_ClearColorG{ 0.5f }, .m_ClearColorB{ 0.5f }, .m_Title{ L"CSD2150 Homework 2 | Owen Huang Wensong"sv } }) }; upVKWin && upVKWin->OK())
   {
     windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
@@ -88,7 +98,9 @@ int main()
         .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
 
         .m_UniformsVert{ vulkanPipeline::createUniformInfo<float, float>() },
-        .m_UniformsFrag{ vulkanPipeline::createUniformInfo<glm::vec3>() },
+        .m_UniformsFrag{ vulkanPipeline::createUniformInfo<glm::vec3, vulkanTexture>() },
+
+        .m_pTextures{ &testTex },
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
         .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
@@ -224,6 +236,8 @@ int main()
     exampleModel.destroyModel();
     upVKWin->destroyPipelineInfo(trianglePipeline);
   }
+
+  pWH->destroyTexture(testTex);
 
   return 0;
 

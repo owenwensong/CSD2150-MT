@@ -11,12 +11,14 @@
 #define GRAPHICS_HANDLER_VULKAN_HEADER
 
 #include <memory>   // std::shared_ptr
+#include <filesystem>
 #include <utility/Singleton.h>
 #include <vulkanHelpers/vulkanInstance.h>
 #include <vulkanHelpers/vulkanDevice.h>
 #include <vulkanHelpers/vulkanWindow.h>
 #include <vulkanHelpers/vulkanPipeline.h>
 #include <vulkanHelpers/vulkanBuffer.h>
+#include <vulkanHelpers/vulkanTexture.h>
 #include <vector>
 
 class windowHandler : public Singleton<windowHandler>
@@ -54,6 +56,20 @@ public:
     VkPipelineLayout createPipelineLayout(VkPipelineLayoutCreateInfo const& CreateInfo);
 
     void destroyPipelineLayout(VkPipelineLayout& pipelineLayout);
+
+    // TEXTURES (implementation in vulkanTexture.cpp)
+
+    bool createTexture(vulkanTexture& outTexture, vulkanTexture::Setup const& inSetup);
+
+    void transitionImageLayout(VkImage image, VkFormat format, bool isTransferStart);// hacky
+
+    void destroyTexture(vulkanTexture& inTexture);
+
+    // one time submit command buffer
+
+    VkCommandBuffer beginOneTimeSubmitCommand(bool useMainCommandPool = false);
+
+    void endOneTimeSubmitCommand(VkCommandBuffer toEnd, bool useMainCommandPool = false);
 
     // Buffers
 

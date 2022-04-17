@@ -182,6 +182,7 @@ vulkanDevice::vulkanDevice(std::shared_ptr<vulkanInstance>& pVKInst) :
 
 vulkanDevice::~vulkanDevice()
 {
+  vkDestroyCommandPool(m_VKDevice, m_TransferCommandSpecialPool, m_pVKInst->m_pVKAllocator);
   vkDestroyCommandPool(m_VKDevice, m_TransferCommandPool, m_pVKInst->m_pVKAllocator);
   std::scoped_lock Lk{ m_LockedVKDescriptorPool };// lock it and let it die
   vkDestroyDescriptorPool(m_VKDevice, m_LockedVKDescriptorPool.get(), m_pVKInst->m_pVKAllocator);
@@ -334,6 +335,19 @@ bool vulkanDevice::initialize(uint32_t MainQueueIndex, VkPhysicalDevice Physical
         .queueFamilyIndex{ m_TransferQueueIndex }
       };
       if (VkResult tmpRes{ vkCreateCommandPool(m_VKDevice, &CreateInfo, m_pVKInst->m_pVKAllocator, &m_TransferCommandPool) }; tmpRes != VK_SUCCESS)
+      {
+        printVKWarning(tmpRes, "Unable to create the Transfer command pool"sv, true);
+        return false;
+      }
+    }
+    {
+      VkCommandPoolCreateInfo CreateInfo
+      {
+        .sType{ VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO },
+        .flags{ VK_COMMAND_POOL_CREATE_TRANSIENT_BIT },
+        .queueFamilyIndex{ m_MainQueueIndex }
+      };
+      if (VkResult tmpRes{ vkCreateCommandPool(m_VKDevice, &CreateInfo, m_pVKInst->m_pVKAllocator, &m_TransferCommandSpecialPool) }; tmpRes != VK_SUCCESS)
       {
         printVKWarning(tmpRes, "Unable to create the Transfer command pool"sv, true);
         return false;

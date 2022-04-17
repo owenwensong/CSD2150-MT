@@ -53,6 +53,9 @@ public: // just realease it... I don't know why everything must touch each other
     lockableObject<VkDescriptorPool>    m_LockedVKDescriptorPool{};
     VkCommandPool                       m_TransferCommandPool{};
 
+    // for transfers that need dst to support graphics
+    VkCommandPool                       m_TransferCommandSpecialPool{};
+
     using bitfield = intptr_t;  // bitfield size match ptr size
 
     bitfield isCreated : 1; // has this already been created?

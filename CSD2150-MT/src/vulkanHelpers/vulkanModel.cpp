@@ -62,11 +62,17 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     Importer.ReadFile
     (
       fPath.data(),
-      aiProcess_Triangulate |
-      aiProcess_JoinIdenticalVertices |
-      aiProcess_PreTransformVertices
+        aiProcess_Triangulate             // only support triangles
+      | aiProcess_GenUVCoords             // what is orcylindrical mapping?
+      | aiProcess_RemoveRedundantMaterials// claims to be useful w/ PreTransform
+      | aiProcess_JoinIdenticalVertices   // my OBJ parser had it too... cool
+      | aiProcess_PreTransformVertices    // force the right transform for skull
+      | aiProcess_CalcTangentSpace        // should always work after GenNormals
+      | aiProcess_GenNormals              // in case they don't exist
+      | aiProcess_FlipUVs                 // rather than flipping the textures
     )
   };
+  
   if (pScene == nullptr || false == pScene->HasMeshes())return false;
 
   std::vector<VTX_3D_UV> vertices;
