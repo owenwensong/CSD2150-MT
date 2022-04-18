@@ -110,6 +110,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     {
       aiVector3D& refVtx{ refMesh.mVertices[j] };
       aiVector3D& refUV{ refMesh.mTextureCoords[0][j] };// I hope 0 is good
+
       vertices.emplace_back
       (
         VTX_3D_UV

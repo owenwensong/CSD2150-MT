@@ -339,72 +339,146 @@ bool windowHandler::setupVertexInputInfo(vulkanPipeline& outPipeline, vulkanPipe
     // stride dependant on mode
     .inputRate{ VK_VERTEX_INPUT_RATE_VERTEX }// no instancing yet of course
   };
-  outPipeline.m_AttributeDescription[0] = VkVertexInputAttributeDescription
-  {
-    .location { 0 },  // layout location 0
-    .binding  { 0 },  // bound buffer 0 (SOA)
-    // format dependant on mode
-    .offset   { 0 }   // assume offset always start at 0, not using struct def
-  };
-  outPipeline.m_AttributeDescription[1] = VkVertexInputAttributeDescription
-  {
-    .location { 1 },  // layout location 1
-    .binding  { 0 },  // bound buffer 0 (SOA)
-    // format dependant on mode
-    // assume offset based on previous attribute size
-  };
-  outPipeline.m_VertexInputInfo = VkPipelineVertexInputStateCreateInfo
-  {
-    .sType{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO },
-    .vertexBindingDescriptionCount	{ 1 },
-    .pVertexBindingDescriptions			{ outPipeline.m_BindingDescription.data() },
-    .vertexAttributeDescriptionCount{ 2 },
-    .pVertexAttributeDescriptions		{ outPipeline.m_AttributeDescription.data() }
-  };
+  
   switch (inSetup.m_VertexBindingMode)
   {
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XY_UV_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_2D_UV));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_2D_UV, m_Tex);
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { offsetof(VTX_2D_UV, m_Tex) }
+    });
+    break;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XY_RGB_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_2D_RGB));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_2D_RGB, m_Col);
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { offsetof(VTX_2D_RGB, m_Col) }
+    });
+    break;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XY_RGBA_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_2D_RGBA));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_2D_RGBA, m_Col);
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32A32_SFLOAT },
+      .offset   { offsetof(VTX_2D_RGBA, m_Col) }
+    });
+    break;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_UV));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_3D_UV, m_Tex);
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { offsetof(VTX_3D_UV, m_Tex) }
+    });
+    break;
+  case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_NML_TAN_F32:
+    outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_UV_NML_TAN));
+    outPipeline.m_AttributeDescription.reserve(4);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32_SFLOAT },
+      .offset   { offsetof(VTX_3D_UV_NML_TAN, m_Tex) }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 2 },  // layout location 2
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { offsetof(VTX_3D_UV_NML_TAN, m_Nml) }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 3 },  // layout location 3
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { offsetof(VTX_3D_UV_NML_TAN, m_Tan) }
+    });
+    break;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_RGB_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_RGB));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_3D_RGB, m_Col);;
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { offsetof(VTX_3D_RGB, m_Col) }
+    });
+    break;
   case vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_RGBA_F32:
     outPipeline.m_BindingDescription[0].stride = static_cast<uint32_t>(sizeof(VTX_3D_RGBA));
-    outPipeline.m_AttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    outPipeline.m_AttributeDescription[1].offset = offsetof(VTX_3D_RGBA, m_Col);;
-    return true;
+    outPipeline.m_AttributeDescription.reserve(2);
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 0 },  // layout location 0
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32_SFLOAT },
+      .offset   { 0 }
+    });
+    outPipeline.m_AttributeDescription.emplace_back(VkVertexInputAttributeDescription{
+      .location { 1 },  // layout location 1
+      .binding  { 0 },  // bound buffer 0 (SOA)
+      .format   { VK_FORMAT_R32G32B32A32_SFLOAT },
+      .offset   { offsetof(VTX_3D_RGBA, m_Col) }
+    });
+    break;
   default:
     printWarning("UNKNOWN VERTEX BINDING MODE PROVIDED"sv);
     return false;
   }
-
-  
+  outPipeline.m_VertexInputInfo = VkPipelineVertexInputStateCreateInfo
+  {
+    .sType{ VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO },
+    .vertexBindingDescriptionCount	{ static_cast<uint32_t>(outPipeline.m_BindingDescription.size()) },
+    .pVertexBindingDescriptions			{ outPipeline.m_BindingDescription.data() },
+    .vertexAttributeDescriptionCount{ static_cast<uint32_t>(outPipeline.m_AttributeDescription.size()) },
+    .pVertexAttributeDescriptions		{ outPipeline.m_AttributeDescription.data() }
+  };
+  return true;
 }
 
 // *****************************************************************************

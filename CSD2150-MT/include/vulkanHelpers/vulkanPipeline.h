@@ -66,6 +66,7 @@ struct vulkanPipeline
     AOS_XY_RGB_F32,
     AOS_XY_RGBA_F32,
     AOS_XYZ_UV_F32,
+    AOS_XYZ_UV_NML_TAN_F32,
     AOS_XYZ_RGB_F32,
     AOS_XYZ_RGBA_F32,
     
@@ -115,7 +116,7 @@ struct vulkanPipeline
 
   std::array<VkPipelineShaderStageCreateInfo, 2>    m_ShaderStages        {};
   std::array<VkVertexInputBindingDescription, 1>    m_BindingDescription  {};
-  std::array<VkVertexInputAttributeDescription, 2>  m_AttributeDescription{};
+  std::vector<VkVertexInputAttributeDescription>    m_AttributeDescription{};
   VkPipelineVertexInputStateCreateInfo              m_VertexInputInfo     {};
   VkPipelineInputAssemblyStateCreateInfo            m_InputAssembly       {};
   // viewport will be taken from window when applying this pipeline
