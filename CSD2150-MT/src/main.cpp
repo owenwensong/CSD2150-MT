@@ -74,6 +74,9 @@ int main()
     vulkanTexture::Setup
     {
       .m_Path{ "../Assets/Textures/Skull/TD_Checker_Base_Color.dds" }
+      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Mixed_AO.dds" }
+      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Normal_OpenGL.dds" }
+      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Roughness.dds" }
     }
   );
 
