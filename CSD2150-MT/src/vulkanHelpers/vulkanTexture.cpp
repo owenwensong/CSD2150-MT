@@ -190,7 +190,6 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
     return false;
   }
 
-  // IGNORING MIP LEVELS SO JUST TAKE 0,0 FIRST TOP FACE
   tinyddsloader::DDSFile::ImageData const* pImgData{ texFile.GetImageData() };
   if (nullptr == pImgData)
   {
@@ -208,8 +207,7 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
       .imageType  { VK_IMAGE_TYPE_2D },
       .format     { texFormat },
       .extent     { outTexture.m_Extent },
-      //.mipLevels  { texFile.GetMipCount() },
-      .mipLevels  { 1 },  // ignore mip levels for now, not enough time
+      .mipLevels  { texFile.GetMipCount() },
       .arrayLayers{ 1 },  // not sure how to extract if it does have
       .samples    { inSetup.m_Samples },
       .tiling     { inSetup.m_Tiling },
@@ -229,7 +227,6 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
   { // allocate image memory and bind memory to the previously created image
     VkMemoryRequirements texImageMemReqs;
     vkGetImageMemoryRequirements(m_pVKDevice->m_VKDevice, outTexture.m_Image, &texImageMemReqs);
-
     uint32_t memTypeIndex;
     if (bool tmpRes{ m_pVKDevice->getMemoryType(texImageMemReqs.memoryTypeBits, vulkanTexture::s_MemPropFlag_Sampler, memTypeIndex) }; false == tmpRes)
     {
@@ -256,7 +253,13 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
   }
 
   { // copy texture from local memory to image memory
-    uint32_t transferSize{ pImgData->m_memSlicePitch };
+    uint32_t mipCount{ texFile.GetMipCount() };
+    uint32_t stagingBufferReqSize{ 0 };
+    for (uint32_t i{ 0 }; i < mipCount; ++i)
+    {
+      stagingBufferReqSize += texFile.GetImageData(i)->m_memSlicePitch;
+    }
+
     vulkanBuffer stagingBuffer;
     if (false ==
       createBuffer
@@ -267,7 +270,7 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
           .m_BufferUsage{ vulkanBuffer::s_BufferUsage_Staging },
           .m_MemPropFlag{ vulkanBuffer::s_MemPropFlag_Staging },
           .m_Count    { 1 },
-          .m_ElemSize { transferSize }
+          .m_ElemSize { stagingBufferReqSize }
         }
       ))
     {
@@ -285,25 +288,20 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
       return false;
     }
 
-    // loop copy when implementing mip levels?
-    std::memcpy(dstData, pImgData->m_mem, transferSize);
-
-    vkUnmapMemory(m_pVKDevice->m_VKDevice, stagingBuffer.m_BufferMemory);
-
-    // copy buffer to image
-    transitionImageLayout(outTexture.m_Image, texFormat, true);
-
-    if (VkCommandBuffer transferCmdBuffer{ beginOneTimeSubmitCommand() }; transferCmdBuffer != VK_NULL_HANDLE)
+    std::vector<VkBufferImageCopy> copyRegions;
+    copyRegions.reserve(mipCount);
+    for (uint32_t i{ 0 }, offset{ 0 }; i < mipCount; ++i)
     {
-      VkBufferImageCopy cpyRegion
-      {
-        .bufferOffset     { 0 },
-        .bufferRowLength  { 0 },
+      tinyddsloader::DDSFile::ImageData const* pMipImgData{ texFile.GetImageData(i) };
+      std::memcpy(reinterpret_cast<char*>(dstData) + offset, pMipImgData->m_mem, pMipImgData->m_memSlicePitch);
+      copyRegions.emplace_back(VkBufferImageCopy{
+        .bufferOffset{ offset },
+        .bufferRowLength{ 0 },
         .bufferImageHeight{ 0 },
         .imageSubresource
         {
           .aspectMask{ VK_IMAGE_ASPECT_COLOR_BIT },
-          .mipLevel       { 0 },
+          .mipLevel       { i },
           .baseArrayLayer { 0 },
           .layerCount     { 1 }
         },
@@ -313,10 +311,23 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
           .y{ 0 },
           .z{ 0 }
         },
-        .imageExtent{ outTexture.m_Extent }
-      };
-      vkCmdCopyBufferToImage(transferCmdBuffer, stagingBuffer.m_Buffer, outTexture.m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &cpyRegion);
+        .imageExtent
+        {
+          .width  { pMipImgData->m_width },
+          .height { pMipImgData->m_height },
+          .depth  { pMipImgData->m_depth }
+        }
+      });
+      offset += pMipImgData->m_memSlicePitch;
+    }
 
+    vkUnmapMemory(m_pVKDevice->m_VKDevice, stagingBuffer.m_BufferMemory);
+
+    transitionImageLayout(outTexture.m_Image, texFormat, mipCount, true);
+
+    if (VkCommandBuffer transferCmdBuffer{ beginOneTimeSubmitCommand() }; transferCmdBuffer != VK_NULL_HANDLE)
+    {
+      vkCmdCopyBufferToImage(transferCmdBuffer, stagingBuffer.m_Buffer, outTexture.m_Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(copyRegions.size()), copyRegions.data());
       endOneTimeSubmitCommand(transferCmdBuffer);
     }
     else
@@ -327,9 +338,10 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
       return false;
     }
 
-    transitionImageLayout(outTexture.m_Image, texFormat, false);
+    transitionImageLayout(outTexture.m_Image, texFormat, mipCount, false);
 
-    destroyBuffer(stagingBuffer);  
+    destroyBuffer(stagingBuffer);
+
   }
 
   { // create image view
@@ -350,7 +362,7 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
       {
         .aspectMask{ VK_IMAGE_ASPECT_COLOR_BIT },
         .baseMipLevel   { 0 },
-        .levelCount     { 1 },
+        .levelCount     { texFile.GetMipCount() },
         .baseArrayLayer { 0 },
         .layerCount     { 1 }
       }
@@ -379,7 +391,7 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
       .compareEnable    { VK_FALSE },
       .compareOp        { VK_COMPARE_OP_ALWAYS },
       .minLod           { 0.0f },
-      .maxLod           { 0.0f },
+      .maxLod           { static_cast<float>(texFile.GetMipCount()) },
       .borderColor      { VK_BORDER_COLOR_INT_OPAQUE_BLACK },
       .unnormalizedCoordinates{ VK_FALSE }
     };
@@ -395,7 +407,7 @@ bool windowHandler::createTexture(vulkanTexture& outTexture, vulkanTexture::Setu
 #undef CTPATHWARNHELPER
 }
 
-void windowHandler::transitionImageLayout(VkImage image, VkFormat format, bool isTransferStart)
+void windowHandler::transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, bool isTransferStart)
 {
   if (VkCommandBuffer CBuf{ beginOneTimeSubmitCommand(!isTransferStart) }; CBuf != VK_NULL_HANDLE)
   {
@@ -413,7 +425,7 @@ void windowHandler::transitionImageLayout(VkImage image, VkFormat format, bool i
       {
         .aspectMask{ VK_IMAGE_ASPECT_COLOR_BIT },
         .baseMipLevel   { 0 },
-        .levelCount     { 1 },
+        .levelCount     { mipLevels },
         .baseArrayLayer { 0 },
         .layerCount     { 1 }
       }

@@ -29,7 +29,7 @@ struct originCamera  // struct just for this implementation always facing origin
 
   glm::ivec2 m_CursorPrev;
 
-  static constexpr glm::vec2 s_DistLimits{ 150.0f, 500.0f };
+  static constexpr glm::vec2 s_DistLimits{ 150.0f, 1000.0f };
   static constexpr float s_ScrollSpeedMul{ 2.0f };
   static constexpr float s_CamFOV{ glm::radians(75.0f) };
   static constexpr float s_Near{ 0.125f };
@@ -69,6 +69,10 @@ namespace FinalSkull  // helper hard coded stuff
     "../Assets/Textures/Skull/TD_Checker_Mixed_AO.dds",
     "../Assets/Textures/Skull/TD_Checker_Normal_OpenGL.dds",
     "../Assets/Textures/Skull/TD_Checker_Roughness.dds"
+    //"../Assets/Textures/VintageCar/_Base_Color.dds",
+    //"../Assets/Textures/VintageCar/_Mixed_AO.dds",
+    //"../Assets/Textures/VintageCar/_Normal_DirectX.dds",
+    //"../Assets/Textures/VintageCar/_Roughness.dds"
   };
 
   static bool loadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& outTextures)
@@ -130,6 +134,7 @@ int main()
 
     vulkanModel exampleModel;
     if (false == exampleModel.load3DUVModel("../Assets/Meshes/Skull_textured.fbx"))
+    //if (false == exampleModel.load3DUVModel("../Assets/Meshes/_2_Vintage_Car_01_low.fbx"))
     {
       printWarning("Failed to load example model"sv, true);
       return -5;

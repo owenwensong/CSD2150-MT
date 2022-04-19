@@ -61,7 +61,7 @@ public:
 
     bool createTexture(vulkanTexture& outTexture, vulkanTexture::Setup const& inSetup);
 
-    void transitionImageLayout(VkImage image, VkFormat format, bool isTransferStart);// hacky
+    void transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, bool isTransferStart);// hacky
 
     void destroyTexture(vulkanTexture& inTexture);
 
