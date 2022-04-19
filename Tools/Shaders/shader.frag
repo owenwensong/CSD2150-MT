@@ -33,6 +33,13 @@ vec3 getNormal()// get from BC5 normal map
 	return v_TBN * vec3(normXY, sqrt(1.0 - dot(normXY, normXY)));
 }
 
+//vec3 getNormal()// get from R8G8B8A8_UNORM for directx
+//{
+//	vec3 norm = texture(u_sNormal, v_UV).rgb * 2.0 - 1.0;
+//	norm.g = -norm.g;
+//	return v_TBN * norm;
+//}
+
 void main()
 {
   vec4 albedoColor = texture(u_sColor, v_UV);

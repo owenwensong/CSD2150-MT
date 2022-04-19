@@ -4,9 +4,8 @@
  * @date    09 FEB 2022
  * @brief   This is the entry point of the program.
  * 
- *          This file also contains the implementation of Homework 2.
- *          The originCamera settings are at the top for easy adjustments.
- *          Creation of the cube is put into the createHW2Model function.
+ *          This is where the final project example lives. The vulkan engine
+ *          is separate from this file.
  *
  * @par Copyright (C) 2022 DigiPen Institute of Technology. All rights reserved.
 *******************************************************************************/
@@ -29,8 +28,8 @@ struct originCamera  // struct just for this implementation always facing origin
 
   glm::ivec2 m_CursorPrev;
 
-  static constexpr glm::vec2 s_DistLimits{ 150.0f, 1000.0f };
-  static constexpr float s_ScrollSpeedMul{ 2.0f };
+  static constexpr glm::vec2 s_DistLimits{ 2.5f, 25.0f };
+  static constexpr float s_ScrollSpeedMul{ 0.125f };
   static constexpr float s_CamFOV{ glm::radians(75.0f) };
   static constexpr float s_Near{ 0.125f };
   static constexpr float s_Far{ s_DistLimits.y * 1.5f };
@@ -40,17 +39,99 @@ struct originCamera  // struct just for this implementation always facing origin
   static const glm::vec3 s_Up;
 };
 
-struct pointLight
+// nextafter only constexpr after C++23
+const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0f) };
+const float originCamera::s_RotYMax{ std::nextafterf(glm::half_pi<float>(), 0.0f) };
+const glm::vec3 originCamera::s_Tgt{ 0.0f, 0.0f, 0.0f };
+const glm::vec3 originCamera::s_Up{ 0.0f, 1.0f, 0.0f };
+
+struct pointLight // aligned for use in uniform buffer
 {
   alignas(16) glm::vec3 m_Pos;
   alignas(16) glm::vec3 m_Col;
 };
 
-// nextafter only constexpr after C++23
-const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0f) };
-const float originCamera::s_RotYMax{ std::nextafterf( glm::half_pi<float>(), 0.0f) };
-const glm::vec3 originCamera::s_Tgt{ 0.0f, 0.0f, 0.0f };
-const glm::vec3 originCamera::s_Up{ 0.0f, 1.0f, 0.0f };
+struct objInfo  // fast for me, slow for the computer (keep it simple, no rotation)
+{
+  glm::vec3 m_Scale;
+  glm::vec3 m_Translation;
+
+  glm::mat4 m_M2W;
+  glm::mat4 m_W2M;
+
+  void genMemberMatrices()
+  {
+    m_M2W = glm::scale(glm::translate(glm::identity<glm::mat4>(), m_Translation), m_Scale);
+    m_W2M = glm::inverse(m_M2W);
+  }
+};
+
+namespace FinalInfos
+{
+  enum objID
+  {
+    E_SKULL = 0,
+    E_CAR,
+    E_NUM_OBJS
+  };
+
+  enum viewModes
+  {
+    E_SKULL_ONLY = 0,
+    E_CAR_ONLY,
+    E_BOTH,
+    E_NUM_VIEWS
+  };
+
+  void switchMode(objInfo& toSwitch, size_t whichObj, size_t whichMode)
+  {
+    switch (whichObj)
+    {
+    case E_SKULL:
+      switch (whichMode)
+      {
+      case E_SKULL_ONLY:
+        toSwitch.m_Scale = glm::vec3{ 0.03125f, 0.03125f, 0.03125f };
+        toSwitch.m_Translation = glm::vec3{ 0.0f, 0.0f, 0.0f };
+        break;
+      case E_CAR_ONLY:
+        toSwitch.m_Scale = glm::vec3{ 0.03125f, 0.03125f, 0.03125f };
+        toSwitch.m_Translation = glm::vec3{ 0.0f, 0.0f, -100.0f };
+        break;
+      case E_BOTH:
+        toSwitch.m_Scale = glm::vec3{ 0.0078125f, 0.0078125f, 0.0078125f };
+        toSwitch.m_Translation = glm::vec3{ 1.0f, 3.5f, -4.0f };
+        break;
+      default:
+        return;
+      }
+      break;
+    case E_CAR:
+      switch (whichMode)
+      {
+      case E_SKULL_ONLY:
+        toSwitch.m_Scale = glm::vec3{ 2.0f, 2.0f, 2.0f };
+        toSwitch.m_Translation = glm::vec3{ 0.0f, 0.0f, -100.0f };
+        break;
+      case E_CAR_ONLY:
+        toSwitch.m_Scale = glm::vec3{ 2.0f, 2.0f, 2.0f };
+        toSwitch.m_Translation = glm::vec3{ 0.0f, -2.5f, 0.0f };
+        break;
+      case E_BOTH:
+        toSwitch.m_Scale = glm::vec3{ 2.0f, 2.0f, 2.0f };
+        toSwitch.m_Translation = glm::vec3{ 0.0f, -2.5f, 0.0f };
+        break;
+      default:
+        return;
+      }
+      break;
+    default:
+      return;
+    }
+    toSwitch.genMemberMatrices();
+  }
+
+}
 
 namespace FinalSkull  // helper hard coded stuff
 {
@@ -69,10 +150,49 @@ namespace FinalSkull  // helper hard coded stuff
     "../Assets/Textures/Skull/TD_Checker_Mixed_AO.dds",
     "../Assets/Textures/Skull/TD_Checker_Normal_OpenGL.dds",
     "../Assets/Textures/Skull/TD_Checker_Roughness.dds"
-    //"../Assets/Textures/VintageCar/_Base_Color.dds",
-    //"../Assets/Textures/VintageCar/_Mixed_AO.dds",
-    //"../Assets/Textures/VintageCar/_Normal_DirectX.dds",
-    //"../Assets/Textures/VintageCar/_Roughness.dds"
+  };
+
+  static bool loadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& outTextures)
+  {
+    windowHandler* pWH{ windowHandler::getPInstance() };
+    assert(pWH);
+
+    for (size_t i{ 0 }, t{ E_NUM_TEXTURES }; i < t; ++i)
+    {
+      if (false == pWH->createTexture(outTextures[i], vulkanTexture::Setup{ .m_Path{ texPaths[i] } }))
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static void unloadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& toClear)
+  {
+    windowHandler* pWH{ windowHandler::getPInstance() };
+    assert(pWH);
+
+    for (vulkanTexture& x : toClear)pWH->destroyTexture(x);
+  }
+}
+
+namespace FinalCar
+{
+  enum texID
+  {
+    E_BASE_COLOR = 0,
+    E_AMBIENT_OCCLUSION,
+    E_NORMAL,
+    E_ROUGHNESS,
+    E_NUM_TEXTURES
+  };
+
+  static const char* texPaths[E_NUM_TEXTURES]
+  {
+    "../Assets/Textures/VintageCar/_Base_Color.dds",
+    "../Assets/Textures/VintageCar/_Mixed_AO.dds",
+    "../Assets/Textures/VintageCar/_Normal_DirectX.dds",
+    "../Assets/Textures/VintageCar/_Roughness.dds"
   };
 
   static bool loadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& outTextures)
@@ -127,27 +247,60 @@ int main()
     printWarning("Failed to load skull texture(s)"sv, true);
     return -4;
   }
+  std::array<vulkanTexture, FinalCar::E_NUM_TEXTURES> CarTextures;
+  if (false == FinalCar::loadTextures(CarTextures))
+  {
+    printWarning("Failed to load car texture(s)"sv, true);
+    return -4;
+  }
 
-  if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_ClearColorR{ 0.5f }, .m_ClearColorG{ 0.5f }, .m_ClearColorB{ 0.5f }, .m_Title{ L"CSD2150 Homework 2 | Owen Huang Wensong"sv } }) }; upVKWin && upVKWin->OK())
+  printf_s
+  (
+    "INSTRUCTIONS:\n"
+    "3 Different view modes exist, switched using the number row keys.\n"
+    "1: SKULL ONLY\n"
+    "2: CAR ONLY\n"
+    "3: BOTH (Skull will be in the seat :D)\n\n"
+    "LIGHTING CONTROLS:\n"
+    "Spacebar: Toggle between directed light following or leave it behind\n"
+    "A + UP/DOWN: Increase/Decrease ambient lighting\n"
+    "R + UP/DOWN: Increase/Decrease directed light's Red intensity\n"
+    "G + UP/DOWN: Increase/Decrease directed light's Green intensity\n"
+    "B + UP/DOWN: Increase/Decrease directed light's Blue intensity\n\n"
+    "OTHER CONTROLS:\n"
+    "F11: Enter fullscreen mode\n"
+  );
+
+  if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_ClearColorR{ 0.0f }, .m_ClearColorG{ 0.0f }, .m_ClearColorB{ 0.0f }, .m_Title{ L"CSD2150 Final Project | Owen Huang Wensong"sv } }) }; upVKWin && upVKWin->OK())
   {
     windowsInput& win0Input{ upVKWin->m_windowsWindow.m_windowInputs };
 
-    vulkanModel exampleModel;
-    if (false == exampleModel.load3DUVModel("../Assets/Meshes/Skull_textured.fbx"))
-    //if (false == exampleModel.load3DUVModel("../Assets/Meshes/_2_Vintage_Car_01_low.fbx"))
+    vulkanModel skullModel;
+    if (false == skullModel.load3DUVModel("../Assets/Meshes/Skull_textured.fbx"))
     {
-      printWarning("Failed to load example model"sv, true);
+      printWarning("Failed to load skull model"sv, true);
+      return -5;
+    }
+    vulkanModel carModel;
+    if (false == carModel.load3DUVModel("../Assets/Meshes/_2_Vintage_Car_01_low.fbx"))
+    {
+      printWarning("Failed to load car model"sv, true);
       return -5;
     }
 
-    vulkanPipeline trianglePipeline;
-    if (false == upVKWin->createPipelineInfo(trianglePipeline,
-      vulkanPipeline::setup
+    objInfo skullInfo, carInfo;
+    FinalInfos::switchMode(skullInfo, FinalInfos::E_SKULL, FinalInfos::E_SKULL_ONLY);
+    FinalInfos::switchMode(carInfo, FinalInfos::E_CAR, FinalInfos::E_SKULL_ONLY);
+
+    
+    vulkanPipeline skullPipeline, carPipeline;
+    if (false == upVKWin->createPipelineInfo(skullPipeline,
+      vulkanPipeline::setup // ***************************** SKULL PIPELINE ****
       {
         .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_NML_TAN_F32 },
         
         .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
-        .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
+        .m_PathShaderFrag{ "../Assets/Shaders/fragBottomUpNormalsBC5.spv"sv },
 
         .m_UniformsVert
         {
@@ -185,6 +338,43 @@ int main()
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
         .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
+      }) || false == upVKWin->createPipelineInfo(carPipeline,
+      vulkanPipeline::setup // ******************************* CAR PIPELINE ****
+      {
+        .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_NML_TAN_F32 },
+
+        .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
+        .m_PathShaderFrag{ "../Assets/Shaders/fragTopDownNormalslR8G8B8A8.spv"sv },
+
+        .m_UniformsVert
+        {
+          vulkanPipeline::createUniformInfo<>()
+        },
+        .m_UniformsFrag
+        {
+          vulkanPipeline::createUniformInfo
+          <
+            float,        // u_AmbientStrength
+            glm::vec3,    // u_LocalCamPos
+            pointLight,   // u_LocalLightPos & u_LocalLightCol
+            vulkanTexture,// u_sColor
+            vulkanTexture,// u_sAmbient
+            vulkanTexture,// u_sNormal
+            vulkanTexture // u_sRoughness
+          >()
+        },
+
+      .m_pTexturesVert{ },
+      .m_pTexturesFrag
+      {
+        &CarTextures[FinalCar::E_BASE_COLOR],
+        &CarTextures[FinalCar::E_AMBIENT_OCCLUSION],
+        &CarTextures[FinalCar::E_NORMAL],
+        &CarTextures[FinalCar::E_ROUGHNESS]
+      },
+
+      .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
+      .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
       }))
     {
       printWarning("pipeline prep failed"sv, true);
@@ -258,13 +448,35 @@ int main()
       {
       // *******************************************************************
       // ******************************************** RENDER LOOP BEGIN ****
-        upVKWin->createAndSetPipeline(trianglePipeline);
-
-        { // Setting uniform
+        
+        { // Setting uniforms
           //static float skullHeightMapScale{ 1.0f };
           //if (win0Input.isPressed(VK_UP))skullHeightMapScale += 0.5f;
           //if (win0Input.isPressed(VK_DOWN))skullHeightMapScale -= 0.5f;
           //upVKWin->setUniform(trianglePipeline, 0, 0, &skullHeightMapScale, sizeof(skullHeightMapScale));
+
+          if (win0Input.isTriggered(VK_1))
+          {
+            size_t mode{ FinalInfos::E_SKULL_ONLY };
+            FinalInfos::switchMode(skullInfo, FinalInfos::E_SKULL, mode);
+            FinalInfos::switchMode(carInfo, FinalInfos::E_CAR, mode);
+            printf_s("Switched to SKULL ONLY mode\n");
+          }
+          else if (win0Input.isTriggered(VK_2))
+          {
+            size_t mode{ FinalInfos::E_CAR_ONLY };
+            FinalInfos::switchMode(skullInfo, FinalInfos::E_SKULL, mode);
+            FinalInfos::switchMode(carInfo, FinalInfos::E_CAR, mode);
+            printf_s("Switched to CAR ONLY mode\n");
+          }
+          else if (win0Input.isTriggered(VK_3))
+          {
+            size_t mode{ FinalInfos::E_BOTH };
+            FinalInfos::switchMode(skullInfo, FinalInfos::E_SKULL, mode);
+            FinalInfos::switchMode(carInfo, FinalInfos::E_CAR, mode);
+            printf_s("Switched to BOTH mode\n");
+          }
+          
 
           static float s_AmbientStrength{ 0.0625f };
           static pointLight s_Light
@@ -292,26 +504,32 @@ int main()
             printf_s("LIGHT INFO (A/R/G/B + UP/DOWN to adjust):\nAmbient strength: %f\nlightR: %.4f\nlightG: %.4f\nlightB: %.4f\n", s_AmbientStrength, s_Light.m_Col.r, s_Light.m_Col.g, s_Light.m_Col.b);
           }
 
-          upVKWin->setUniform(trianglePipeline, 1, 0, &s_AmbientStrength, sizeof(s_AmbientStrength));
-          upVKWin->setUniform(trianglePipeline, 1, 1, &cam.m_Pos, sizeof(cam.m_Pos));
-          upVKWin->setUniform(trianglePipeline, 1, 2, &s_Light, sizeof(s_Light));
+          pointLight l_light{ s_Light };
+          glm::vec3 l_camPos{ skullInfo.m_W2M * glm::vec4{ cam.m_Pos, 1.0f } };
+          l_light.m_Pos = skullInfo.m_W2M * glm::vec4{ s_Light.m_Pos, 1.0f };
+          upVKWin->setUniform(skullPipeline, 1, 0, &s_AmbientStrength, sizeof(s_AmbientStrength));
+          upVKWin->setUniform(skullPipeline, 1, 1, &l_camPos, sizeof(l_camPos));
+          upVKWin->setUniform(skullPipeline, 1, 2, &l_light, sizeof(l_light));
+          
+          l_camPos = carInfo.m_W2M * glm::vec4{ cam.m_Pos, 1.0f };
+          l_light.m_Pos = carInfo.m_W2M * glm::vec4{ s_Light.m_Pos, 1.0f };
+          upVKWin->setUniform(carPipeline, 1, 0, &s_AmbientStrength, sizeof(s_AmbientStrength));
+          upVKWin->setUniform(carPipeline, 1, 1, &l_camPos, sizeof(l_camPos));
+          upVKWin->setUniform(carPipeline, 1, 2, &l_light, sizeof(l_light));
         }
 
-        { // Rotating object
-          static MTU::Timer lazyTimer{ MTU::Timer::getCurrentTP() };// force start the static timer since I'm lazy
-          lazyTimer.stop();// lap the timer, doesn't actually stop it
-          float boxRot{ static_cast<float>(lazyTimer.getElapsedCount()) / MTU::Timer::clockFrequency };// ~6s/Rotation
-          //glm::mat3 tmpform{ MTU::axisAngleRotation(cam.s_Up, boxRot, nullptr) };
-          glm::mat4 xform/**/{ cam.m_W2V };/**/
-          //{
-          //  glm::vec4{ tmpform[0], 0.0f },
-          //  glm::vec4{ tmpform[1], 0.0f },
-          //  glm::vec4{ tmpform[2], 0.0f },
-          //  glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }
-          //};
-          //xform = cam.m_W2V * xform;
-          vkCmdPushConstants(FCB, trianglePipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(glm::mat4)), &xform);
-          exampleModel.draw(FCB);
+        upVKWin->createAndSetPipeline(skullPipeline);
+        { // skull object
+          glm::mat4 xform{ cam.m_W2V * skullInfo.m_M2W };
+          vkCmdPushConstants(FCB, skullPipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(xform)), &xform);
+          skullModel.draw(FCB);
+        }
+
+        upVKWin->createAndSetPipeline(carPipeline);
+        { // car object
+          glm::mat4 xform{ cam.m_W2V * carInfo.m_M2W };
+          vkCmdPushConstants(FCB, carPipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(xform)), &xform);
+          carModel.draw(FCB);
         }
 
         upVKWin->FrameEnd();
@@ -322,10 +540,13 @@ int main()
       // ************************************************** WINDOW LOOP END ****
       // ***********************************************************************
     }
-    exampleModel.destroyModel();
-    upVKWin->destroyPipelineInfo(trianglePipeline);
+    carModel.destroyModel();
+    skullModel.destroyModel();
+    upVKWin->destroyPipelineInfo(carPipeline);
+    upVKWin->destroyPipelineInfo(skullPipeline);
   }
 
+  FinalCar::unloadTextures(CarTextures);
   FinalSkull::unloadTextures(SkullTextures);
 
   return 0;
