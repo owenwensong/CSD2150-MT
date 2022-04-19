@@ -826,7 +826,7 @@ bool vulkanWindow::CreateUniformDescriptorSetLayouts(vulkanPipeline& outPipeline
       x.m_DescriptorType,         // descriptorType
       1,                          // descriptorCount
       VK_SHADER_STAGE_VERTEX_BIT, // stageFlags
-      VK_NULL_HANDLE              // pImmutableSamplers
+      nullptr                     // pImmutableSamplers
     );
   }
   VkDescriptorSetLayoutCreateInfo layoutCreateInfo
@@ -852,7 +852,7 @@ bool vulkanWindow::CreateUniformDescriptorSetLayouts(vulkanPipeline& outPipeline
       x.m_DescriptorType,           // descriptorType
       1,                            // descriptorCount
       VK_SHADER_STAGE_FRAGMENT_BIT, // stageFlags
-      VK_NULL_HANDLE                // pImmutableSamplers
+      nullptr                       // pImmutableSamplers
     );
   }
   layoutCreateInfo.bindingCount = static_cast<uint32_t>(uniformLayoutBindings.size());
@@ -880,7 +880,7 @@ bool vulkanWindow::CreateUniformBuffers(vulkanPipeline& outPipeline, vulkanPipel
   for (size_t i{ 0 }, t{ refHelper.size() }; i < t; ++i)// for every shader
   {
     auto& DBufs{ outPipeline.m_DescriptorBuffers[i] };
-    DBufs.resize(m_ImageCount * outPipeline.m_DescriptorCounts[i]);
+    DBufs.resize(static_cast<size_t>(m_ImageCount) * outPipeline.m_DescriptorCounts[i]);
     for (size_t j{ 0 }, k{ refHelper[i]->size() }; j < k; ++j)// for every uniform
     {
       if (VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER == refHelper[i][0][j].m_DescriptorType)
@@ -1569,7 +1569,7 @@ bool vulkanWindow::createAndSetPipeline(vulkanPipeline& pipelineCustomCreateInfo
 
 void vulkanWindow::setUniform(vulkanPipeline& inPipeline, uint32_t shaderTarget, uint32_t uniformTarget, void* pData, size_t dataLen)
 {
-  vulkanBuffer& targetBuffer{ inPipeline.m_DescriptorBuffers[shaderTarget][m_FrameIndex * inPipeline.m_DescriptorCounts[shaderTarget] + uniformTarget] };
+  vulkanBuffer& targetBuffer{ inPipeline.m_DescriptorBuffers[shaderTarget][static_cast<size_t>(m_FrameIndex) * inPipeline.m_DescriptorCounts[shaderTarget] + uniformTarget]};
   assert(pData && dataLen <= targetBuffer.m_Settings.m_ElemSize * targetBuffer.m_Settings.m_Count);
   void* pDst{ nullptr };
   if (VkResult tmpRes{ vkMapMemory(m_Device->m_VKDevice, targetBuffer.m_BufferMemory, 0, dataLen, 0, &pDst)}; tmpRes != VK_SUCCESS)

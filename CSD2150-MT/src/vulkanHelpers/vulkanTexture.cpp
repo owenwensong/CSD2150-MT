@@ -10,9 +10,9 @@
 #include <vulkanHelpers/vulkanTexture.h>
 #include <vulkanHelpers/printWarnings.h>
 #include <handlers/windowHandler.h>
-#pragma warning (disable : 26451 26495 26812)// disable library warnings
+#pragma warning (disable : 4244 26451 26495 26812)// disable library warnings
 #include <tinyddsloader.h>
-#pragma warning (default : 26451 26495)// reenable warnings except unscoped enum
+#pragma warning (default : 4244 26451 26495)// reenable warnings except unscoped enum
 #include <fstream>
 
 bool tryTinyDDS(tinyddsloader::Result tDDSResult, bool isErrIfFail = false)

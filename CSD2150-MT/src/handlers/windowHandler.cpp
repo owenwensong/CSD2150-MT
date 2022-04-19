@@ -228,7 +228,7 @@ bool windowHandler::writeToBuffer(vulkanBuffer& dstBuffer, std::vector<void*> co
   }
   for (size_t i{ 0 }, t{ srcs.size() }; i < t; ++i)
   {
-    std::memcpy(dstData, srcs[i], srcLens[i]);
+    std::memcpy(dstData, srcs[i], static_cast<size_t>(srcLens[i]));
     dstData = reinterpret_cast<char*>(dstData) + srcLens[i];
   }
   vkUnmapMemory(m_pVKDevice->m_VKDevice, stagingBuffer.m_BufferMemory);

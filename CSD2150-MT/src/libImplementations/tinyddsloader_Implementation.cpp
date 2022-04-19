@@ -10,12 +10,12 @@
 #ifndef TINYDDS_IMPLEMENTED // guard in case enabling unity build makes
 #define TINYDDS_IMPLEMENTED // implementation definition leak everywhere
 
-#pragma warning (disable : 26451 26495 26812)// disable library warnings
+#pragma warning (disable : 4244 26451 26495 26812)// disable library warnings
 
 #define TINYDDSLOADER_IMPLEMENTATION
 #include <tinyddsloader.h>
 #undef TINYDDSLOADER_IMPLEMENTATION
 
-#pragma warning (default : 26451 26495 26812)// reenable warnings
+#pragma warning (default : 4244 26451 26495 26812)// reenable warnings
 
 #endif//TINYDDS_IMPLEMENTED

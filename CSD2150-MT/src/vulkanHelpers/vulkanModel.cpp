@@ -181,7 +181,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
       vertices.data()
     },
     {
-      vertices.size() * sizeof(decltype(vertices)::value_type)
+      static_cast<VkDeviceSize>(vertices.size()) * sizeof(decltype(vertices)::value_type)
     }
   );
 
@@ -211,7 +211,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
         indices.data()
       },
       {
-        indices.size() * sizeof(decltype(indices)::value_type)
+        static_cast<VkDeviceSize>(indices.size()) * sizeof(decltype(indices)::value_type)
       }
     );
   }
