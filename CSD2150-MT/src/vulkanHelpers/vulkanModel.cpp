@@ -56,6 +56,8 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
   windowHandler* pWH{ windowHandler::getPInstance() };
   assert(pWH != nullptr);// debug only, flow should be pretty standard.
 
+#define PATHWARNHELPER(x) printWarning(std::string{ fPath }.append(x), true)
+
   Assimp::Importer Importer;
   aiScene const* pScene
   {
@@ -75,7 +77,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
   
   if (pScene == nullptr || false == pScene->HasMeshes())return false;
 
-  std::vector<VTX_3D_UV> vertices;
+  std::vector<VTX_3D_UV_NML_TAN> vertices;
   std::vector<uint32_t> indices;
 
   { // reserve all the space needed...
@@ -98,7 +100,17 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     aiMesh& refMesh{ *pScene->mMeshes[i] };
     if (false == refMesh.HasTextureCoords(0))
     {
-      printWarning('\"' + std::string{fPath} + "\" has no/incomplete texture coordinates", true);
+      PATHWARNHELPER(" | has no/incomplete texture coordinates"sv);
+      return false;
+    }
+    if (false == refMesh.HasNormals())
+    {
+      PATHWARNHELPER(" | has no normals"sv);
+      return false;
+    }
+    if (false == refMesh.HasTangentsAndBitangents())
+    {
+      PATHWARNHELPER(" | has no tangents"sv);
       return false;
     }
 
@@ -110,14 +122,16 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
     {
       aiVector3D& refVtx{ refMesh.mVertices[j] };
       aiVector3D& refUV{ refMesh.mTextureCoords[0][j] };// I hope 0 is good
+      aiVector3D& refNml{ refMesh.mNormals[j] };
+      aiVector3D& refTan{ refMesh.mTangents[j] };
+      
 
       vertices.emplace_back
       (
-        VTX_3D_UV
-        {
-          decltype(VTX_3D_UV::m_Pos){ refVtx.x, refVtx.y, refVtx.z },
-          decltype(VTX_3D_UV::m_Tex){ refUV.x, refUV.y }
-        }
+        decltype(VTX_3D_UV_NML_TAN::m_Pos){ refVtx.x, refVtx.y, refVtx.z },
+        decltype(VTX_3D_UV_NML_TAN::m_Tex){ refUV.x, refUV.y },
+        decltype(VTX_3D_UV_NML_TAN::m_Nml){ refNml.x, refNml.y, refNml.z },
+        decltype(VTX_3D_UV_NML_TAN::m_Tan){ refTan.x, refTan.y, refTan.z }
       );
     }
 
@@ -205,7 +219,7 @@ bool vulkanModel::load3DUVModel(std::string_view const& fPath)
   {
     m_Buffer_Index = vulkanBuffer{  };
   }
-
+#undef PATHWARNHELPER
   return true;
 }
 

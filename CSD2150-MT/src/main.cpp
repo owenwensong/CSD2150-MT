@@ -21,6 +21,7 @@
 struct originCamera  // struct just for this implementation always facing origin
 {
   float     m_Dist;
+  glm::vec3 m_Pos;
   glm::vec2 m_Rot;
 
   glm::mat4 m_LookMat;
@@ -28,7 +29,7 @@ struct originCamera  // struct just for this implementation always facing origin
 
   glm::ivec2 m_CursorPrev;
 
-  static constexpr glm::vec2 s_DistLimits{ 250.0f, 500.0f };
+  static constexpr glm::vec2 s_DistLimits{ 150.0f, 500.0f };
   static constexpr float s_ScrollSpeedMul{ 2.0f };
   static constexpr float s_CamFOV{ glm::radians(75.0f) };
   static constexpr float s_Near{ 0.125f };
@@ -39,11 +40,60 @@ struct originCamera  // struct just for this implementation always facing origin
   static const glm::vec3 s_Up;
 };
 
+struct pointLight
+{
+  alignas(16) glm::vec3 m_Pos;
+  alignas(16) glm::vec3 m_Col;
+};
+
 // nextafter only constexpr after C++23
 const float originCamera::s_RotYMin{ std::nextafterf(-glm::half_pi<float>(), 0.0f) };
 const float originCamera::s_RotYMax{ std::nextafterf( glm::half_pi<float>(), 0.0f) };
 const glm::vec3 originCamera::s_Tgt{ 0.0f, 0.0f, 0.0f };
 const glm::vec3 originCamera::s_Up{ 0.0f, 1.0f, 0.0f };
+
+namespace FinalSkull  // helper hard coded stuff
+{
+  enum texID
+  {
+    E_BASE_COLOR = 0,
+    E_AMBIENT_OCCLUSION,
+    E_NORMAL,
+    E_ROUGHNESS,
+    E_NUM_TEXTURES
+  };
+
+  static const char* texPaths[E_NUM_TEXTURES]
+  {
+    "../Assets/Textures/Skull/TD_Checker_Base_Color.dds",
+    "../Assets/Textures/Skull/TD_Checker_Mixed_AO.dds",
+    "../Assets/Textures/Skull/TD_Checker_Normal_OpenGL.dds",
+    "../Assets/Textures/Skull/TD_Checker_Roughness.dds"
+  };
+
+  static bool loadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& outTextures)
+  {
+    windowHandler* pWH{ windowHandler::getPInstance() };
+    assert(pWH);
+
+    for (size_t i{ 0 }, t{ E_NUM_TEXTURES }; i < t; ++i)
+    {
+      if (false == pWH->createTexture(outTextures[i], vulkanTexture::Setup{ .m_Path{ texPaths[i] } }))
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static void unloadTextures(std::array<vulkanTexture, E_NUM_TEXTURES>& toClear)
+  {
+    windowHandler* pWH{ windowHandler::getPInstance() };
+    assert(pWH);
+
+    for (vulkanTexture& x : toClear)pWH->destroyTexture(x);
+  }
+}
 
 int main()
 {
@@ -67,18 +117,12 @@ int main()
     return -3;
   }
 
-  vulkanTexture testTex;
-  pWH->createTexture
-  (
-    testTex,
-    vulkanTexture::Setup
-    {
-      .m_Path{ "../Assets/Textures/Skull/TD_Checker_Base_Color.dds" }
-      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Mixed_AO.dds" }
-      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Normal_OpenGL.dds" }
-      //.m_Path{ "../Assets/Textures/Skull/TD_Checker_Roughness.dds" }
-    }
-  );
+  std::array<vulkanTexture, FinalSkull::E_NUM_TEXTURES> SkullTextures;
+  if (false == FinalSkull::loadTextures(SkullTextures))
+  {
+    printWarning("Failed to load skull texture(s)"sv, true);
+    return -4;
+  }
 
   if (std::unique_ptr<vulkanWindow> upVKWin{ pWH->createWindow(windowSetup{.m_ClearColorR{ 0.5f }, .m_ClearColorG{ 0.5f }, .m_ClearColorB{ 0.5f }, .m_Title{ L"CSD2150 Homework 2 | Owen Huang Wensong"sv } }) }; upVKWin && upVKWin->OK())
   {
@@ -88,22 +132,50 @@ int main()
     if (false == exampleModel.load3DUVModel("../Assets/Meshes/Skull_textured.fbx"))
     {
       printWarning("Failed to load example model"sv, true);
-      return -4;
+      return -5;
     }
 
     vulkanPipeline trianglePipeline;
     if (false == upVKWin->createPipelineInfo(trianglePipeline,
       vulkanPipeline::setup
       {
-        .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_F32 },
+        .m_VertexBindingMode{ vulkanPipeline::E_VERTEX_BINDING_MODE::AOS_XYZ_UV_NML_TAN_F32 },
         
         .m_PathShaderVert{ "../Assets/Shaders/Vert.spv"sv },
         .m_PathShaderFrag{ "../Assets/Shaders/Frag.spv"sv },
 
-        .m_UniformsVert{ vulkanPipeline::createUniformInfo<float, float>() },
-        .m_UniformsFrag{ vulkanPipeline::createUniformInfo<glm::vec3, vulkanTexture>() },
+        .m_UniformsVert
+        {
+          vulkanPipeline::createUniformInfo
+          <
+            //float,        // heightmap scale
+            //vulkanTexture // u_sRoughness (for heightmap data)
+          >()
+        },
+        .m_UniformsFrag
+        {
+          vulkanPipeline::createUniformInfo
+          <
+            glm::vec3,    // u_LocalCamPos
+            pointLight,    // u_LocalLightPos & u_LocalLightCol
+            vulkanTexture,// u_sColor
+            vulkanTexture,// u_sAmbient
+            vulkanTexture,// u_sNormal
+            vulkanTexture // u_sRoughness
+          >()
+        },
 
-        .m_pTextures{ &testTex },
+        .m_pTexturesVert
+        {
+          //&SkullTextures[FinalSkull::E_ROUGHNESS]
+        },
+        .m_pTexturesFrag
+        {
+          &SkullTextures[FinalSkull::E_BASE_COLOR],
+          &SkullTextures[FinalSkull::E_AMBIENT_OCCLUSION],
+          &SkullTextures[FinalSkull::E_NORMAL],
+          &SkullTextures[FinalSkull::E_ROUGHNESS]
+        },
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
         .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
@@ -127,11 +199,12 @@ int main()
 
       static originCamera cam
       {
-        .m_Dist       { originCamera::s_DistLimits.x },
-        .m_Rot        { 0.0f, 0.0f },
+        .m_Dist       { 0.5f * (originCamera::s_DistLimits.x + originCamera::s_DistLimits.y) },
+        .m_Pos        { 0.0f, 0.0f, cam.m_Dist },
+        .m_Rot        { -glm::half_pi<float>(), 0.0f},
         .m_LookMat
         {
-          glm::lookAt(glm::vec3{ cam.m_Dist, 0.0f, 0.0f }, cam.s_Tgt, cam.s_Up)
+          glm::lookAt(glm::vec3{ 0.0f, 0.0f, cam.m_Dist }, cam.s_Tgt, cam.s_Up)
         },
         .m_W2V
         {
@@ -154,13 +227,13 @@ int main()
         cam.m_Dist = glm::clamp(cam.m_Dist - cam.s_ScrollSpeedMul * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
 
         // update lookat
-        glm::vec3 camPos
+        cam.m_Pos =
         {
           MTU::axisAngleRotation(cam.s_Up, cam.m_Rot.x, nullptr) *
           glm::vec3{ cosf(cam.m_Rot.y), sinf(cam.m_Rot.y), 0.0f} * cam.m_Dist
         };
 
-        cam.m_LookMat = glm::lookAt(camPos, cam.s_Tgt, cam.s_Up);
+        cam.m_LookMat = glm::lookAt(cam.m_Pos, cam.s_Tgt, cam.s_Up);
 
         // update W2V matrix
         cam.m_W2V = 
@@ -181,34 +254,36 @@ int main()
       // ******************************************** RENDER LOOP BEGIN ****
         upVKWin->createAndSetPipeline(trianglePipeline);
 
-        // uniform test here
-        {
-          static float tmp{ 300.0f };
-          if (win0Input.isTriggered(VK_V))tmp = tmp ? 0.0f : 300.0f;
-          upVKWin->setUniform(trianglePipeline, 0, 0, &tmp, sizeof(tmp));
-          upVKWin->setUniform(trianglePipeline, 0, 1, &tmp, sizeof(tmp));
-          static glm::vec3 colMul{ 1.0f, 1.0f, 1.0f };
-          if (win0Input.isTriggered(VK_SPACE))
+        { // Setting uniform
+          //static float skullHeightMapScale{ 1.0f };
+          //if (win0Input.isPressed(VK_UP))skullHeightMapScale += 0.5f;
+          //if (win0Input.isPressed(VK_DOWN))skullHeightMapScale -= 0.5f;
+          //upVKWin->setUniform(trianglePipeline, 0, 0, &skullHeightMapScale, sizeof(skullHeightMapScale));
+          
+          upVKWin->setUniform(trianglePipeline, 1, 0, &cam.m_Pos, sizeof(cam.m_Pos));
+          
+          static pointLight s_Light
           {
-            static int lazyState{ -1 };
-            switch (++lazyState)
-            {
-            case 0:
-              colMul = glm::vec3{ 0.0f, 0.0f, 0.0f };
-              break;
-            case 1:
-              colMul.r = 1.0f;
-              break;
-            case 2:
-              colMul.g = 1.0f;
-              break;
-            case 3:
-              colMul.b = 1.0f;
-              lazyState = -1;
-              break;
-            }
+            .m_Pos{ cam.m_Pos },
+            .m_Col{ 1.0f, 1.0f, 1.0f }
+          };
+          static bool s_bLightFollow{ true };
+          if (win0Input.isTriggered(VK_SPACE))s_bLightFollow = !s_bLightFollow;
+          if (s_bLightFollow)s_Light.m_Pos = cam.m_Pos;
+          if (win0Input.isTriggered(VK_UP))
+          {
+            if (win0Input.isPressed(VK_R) && (s_Light.m_Col.r += 0.125f) > 1.0f)s_Light.m_Col.r = 1.0f;
+            if (win0Input.isPressed(VK_G) && (s_Light.m_Col.g += 0.125f) > 1.0f)s_Light.m_Col.g = 1.0f;
+            if (win0Input.isPressed(VK_B) && (s_Light.m_Col.b += 0.125f) > 1.0f)s_Light.m_Col.b = 1.0f;
           }
-          upVKWin->setUniform(trianglePipeline, 1, 0, &colMul, sizeof(colMul));
+          else if (win0Input.isTriggered(VK_DOWN))
+          {
+            if (win0Input.isPressed(VK_R) && (s_Light.m_Col.r -= 0.125f) < 0.0f)s_Light.m_Col.r = 0.0f;
+            if (win0Input.isPressed(VK_G) && (s_Light.m_Col.g -= 0.125f) < 0.0f)s_Light.m_Col.g = 0.0f;
+            if (win0Input.isPressed(VK_B) && (s_Light.m_Col.b -= 0.125f) < 0.0f)s_Light.m_Col.b = 0.0f;
+          }
+
+          upVKWin->setUniform(trianglePipeline, 1, 1, &s_Light, sizeof(s_Light));
         }
 
         { // Rotating object
@@ -240,7 +315,7 @@ int main()
     upVKWin->destroyPipelineInfo(trianglePipeline);
   }
 
-  pWH->destroyTexture(testTex);
+  FinalSkull::unloadTextures(SkullTextures);
 
   return 0;
 

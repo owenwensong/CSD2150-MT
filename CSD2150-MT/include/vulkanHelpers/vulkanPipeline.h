@@ -91,7 +91,8 @@ struct vulkanPipeline
     std::vector<uniformInfo> m_UniformsFrag{ createUniformInfo<>() };
     
     // Samplers
-    std::vector<vulkanTexture*> m_pTextures{  };
+    std::vector<vulkanTexture*> m_pTexturesVert{  };
+    std::vector<vulkanTexture*> m_pTexturesFrag{  };
 
     // will be used directly for pPushConstantRanges, don't move it around.
     VkPushConstantRange m_PushConstantRangeVert{ createPushConstantInfo<>(VK_SHADER_STAGE_VERTEX_BIT) };

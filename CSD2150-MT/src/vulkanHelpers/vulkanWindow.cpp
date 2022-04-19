@@ -917,6 +917,12 @@ bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulk
     &inSetup.m_UniformsFrag
   };
 
+  std::array<std::vector<vulkanTexture*> const*, 2> refTexHelper
+  {
+    &inSetup.m_pTexturesVert,
+    &inSetup.m_pTexturesFrag
+  };
+
   outPipeline.m_DescriptorSets.resize(m_ImageCount);
   std::scoped_lock lock{ m_Device->m_LockedVKDescriptorPool };
   VkDescriptorSetAllocateInfo allocInfo
@@ -938,6 +944,7 @@ bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulk
     for (size_t i{ 0 }, t{ refHelper.size() }; i < t; ++i)// for every shader
     {
       VkDescriptorSet& DSet{ DSets[i] };
+      std::vector<vulkanTexture*> const& pTexures{ *refTexHelper[i] };
 
       std::vector<std::variant<VkDescriptorBufferInfo, VkDescriptorImageInfo>> bufferInfos;
       std::vector<VkWriteDescriptorSet> descriptorWrites;
@@ -962,7 +969,7 @@ bool vulkanWindow::CreateUniformDescriptorSets(vulkanPipeline& outPipeline, vulk
             .range  { refHelper[i][0][j].m_TypeSize }
           });
         }
-        else if (vulkanTexture* pTex{ inSetup.m_pTextures[samplerID++] }; pTex != nullptr)
+        else if (vulkanTexture* pTex{ pTexures[samplerID++] }; pTex != nullptr)
         {
           bufferInfos.emplace_back(VkDescriptorImageInfo{
             .sampler    { pTex->m_Sampler },
@@ -1275,11 +1282,18 @@ bool vulkanWindow::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipelin
   outPipeline.m_DescriptorCounts[0] = static_cast<uint32_t>(inSetup.m_UniformsVert.size());
   outPipeline.m_DescriptorCounts[1] = static_cast<uint32_t>(inSetup.m_UniformsFrag.size());
   
-  for (auto const& x : inSetup.m_UniformsVert)
   {
-    if (x.m_DescriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+    size_t numSamplers{ 0 };
+    for (auto const& x : inSetup.m_UniformsVert)
     {
-      printWarning("No support for samplers in vertex stage"sv, true);
+      if (x.m_DescriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+      {
+        ++numSamplers;
+      }
+    }
+    if (numSamplers != inSetup.m_pTexturesVert.size())
+    {
+      printWarning("uniform info number of samplers and provided textures mismatched (vert)!"sv, true);
       return false;
     }
   }
@@ -1293,9 +1307,9 @@ bool vulkanWindow::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipelin
         ++numSamplers;
       }
     }
-    if (numSamplers != inSetup.m_pTextures.size())
+    if (numSamplers != inSetup.m_pTexturesFrag.size())
     {
-      printWarning("uniform info number of samplers and provided textures mismatched!"sv, true);
+      printWarning("uniform info number of samplers and provided textures mismatched (frag)!"sv, true);
       return false;
     }
   }
