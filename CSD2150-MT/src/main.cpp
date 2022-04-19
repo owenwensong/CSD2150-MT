@@ -156,8 +156,9 @@ int main()
         {
           vulkanPipeline::createUniformInfo
           <
+            float,        // u_AmbientStrength
             glm::vec3,    // u_LocalCamPos
-            pointLight,    // u_LocalLightPos & u_LocalLightCol
+            pointLight,   // u_LocalLightPos & u_LocalLightCol
             vulkanTexture,// u_sColor
             vulkanTexture,// u_sAmbient
             vulkanTexture,// u_sNormal
@@ -259,9 +260,8 @@ int main()
           //if (win0Input.isPressed(VK_UP))skullHeightMapScale += 0.5f;
           //if (win0Input.isPressed(VK_DOWN))skullHeightMapScale -= 0.5f;
           //upVKWin->setUniform(trianglePipeline, 0, 0, &skullHeightMapScale, sizeof(skullHeightMapScale));
-          
-          upVKWin->setUniform(trianglePipeline, 1, 0, &cam.m_Pos, sizeof(cam.m_Pos));
-          
+
+          static float s_AmbientStrength{ 0.0625f };
           static pointLight s_Light
           {
             .m_Pos{ cam.m_Pos },
@@ -275,15 +275,21 @@ int main()
             if (win0Input.isPressed(VK_R) && (s_Light.m_Col.r += 0.125f) > 1.0f)s_Light.m_Col.r = 1.0f;
             if (win0Input.isPressed(VK_G) && (s_Light.m_Col.g += 0.125f) > 1.0f)s_Light.m_Col.g = 1.0f;
             if (win0Input.isPressed(VK_B) && (s_Light.m_Col.b += 0.125f) > 1.0f)s_Light.m_Col.b = 1.0f;
+            if (win0Input.isPressed(VK_A) && (s_AmbientStrength += 0.0625f) > 1.0f)s_AmbientStrength = 1.0f;
+            printf_s("LIGHT INFO (A/R/G/B + UP/DOWN to adjust):\nAmbient strength: %f\nlightR: %.4f\nlightG: %.4f\nlightB: %.4f\n", s_AmbientStrength, s_Light.m_Col.r, s_Light.m_Col.g, s_Light.m_Col.b);
           }
           else if (win0Input.isTriggered(VK_DOWN))
           {
             if (win0Input.isPressed(VK_R) && (s_Light.m_Col.r -= 0.125f) < 0.0f)s_Light.m_Col.r = 0.0f;
             if (win0Input.isPressed(VK_G) && (s_Light.m_Col.g -= 0.125f) < 0.0f)s_Light.m_Col.g = 0.0f;
             if (win0Input.isPressed(VK_B) && (s_Light.m_Col.b -= 0.125f) < 0.0f)s_Light.m_Col.b = 0.0f;
+            if (win0Input.isPressed(VK_A) && (s_AmbientStrength -= 0.0625f) < 0.0f)s_AmbientStrength = 0.0f;
+            printf_s("LIGHT INFO (A/R/G/B + UP/DOWN to adjust):\nAmbient strength: %f\nlightR: %.4f\nlightG: %.4f\nlightB: %.4f\n", s_AmbientStrength, s_Light.m_Col.r, s_Light.m_Col.g, s_Light.m_Col.b);
           }
 
-          upVKWin->setUniform(trianglePipeline, 1, 1, &s_Light, sizeof(s_Light));
+          upVKWin->setUniform(trianglePipeline, 1, 0, &s_AmbientStrength, sizeof(s_AmbientStrength));
+          upVKWin->setUniform(trianglePipeline, 1, 1, &cam.m_Pos, sizeof(cam.m_Pos));
+          upVKWin->setUniform(trianglePipeline, 1, 2, &s_Light, sizeof(s_Light));
         }
 
         { // Rotating object
