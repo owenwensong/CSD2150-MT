@@ -28,7 +28,7 @@ struct vulkanPipeline
     return VkPushConstantRange
     {
       .stageFlags{ targetStage },
-      .offset{ 0 },
+      .offset{ 0 }, // set later, assume tightly packed between shader stages.
       .size{ totalTypesSize<pushConstantTypes...>() }
     };
   }
@@ -104,6 +104,10 @@ struct vulkanPipeline
   VkShaderModule                                    m_ShaderFrag          { VK_NULL_HANDLE };
   VkPipelineLayout                                  m_PipelineLayout      { VK_NULL_HANDLE };
 
+  // Push constant offsets... out of hand... maybe don't abstract this at all
+  // for gam300? just make it the problem of those writing the shaders.
+  std::array<uint32_t, 2>                           m_PushConstantOffsets{};
+
   // array of 2, 1 for vertex shader, 1 for fragment shader.
   // vectors for each frame in flight which uniform
   // access determined by uniform count * curr frame + idx
@@ -130,6 +134,9 @@ struct vulkanPipeline
   VkPipelineColorBlendStateCreateInfo               m_ColorBlending       {};
   std::array<VkDynamicState, 2>                     m_DynamicStates       {};
   VkPipelineDynamicStateCreateInfo                  m_DynamicStateCreateInfo{};
+
+  void pushConstant(VkCommandBuffer FCB, VkShaderStageFlags stageFlags, uint32_t offsetInto, uint32_t srcSize, const void* srcData);
+
 };
 
 #endif//VULKAN_PIPELINE_HELPER_HEADER

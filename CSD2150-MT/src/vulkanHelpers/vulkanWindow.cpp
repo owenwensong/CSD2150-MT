@@ -1331,26 +1331,33 @@ bool vulkanWindow::createPipelineInfo(vulkanPipeline& outPipeline, vulkanPipelin
   }
 
   { // local scope for VkPipelineLayout
+
+    std::vector<VkPushConstantRange> PCRanges;
+    PCRanges.reserve(2);
+    uint32_t PCRangeOffset{ 0 };
+    if (inSetup.m_PushConstantRangeVert.size != 0)
+    {
+      VkPushConstantRange& currPCRange{ PCRanges.emplace_back(inSetup.m_PushConstantRangeVert) };
+      currPCRange.offset += PCRangeOffset;
+      outPipeline.m_PushConstantOffsets[0] = currPCRange.offset;  // always 0 lol
+      PCRangeOffset += currPCRange.size;
+    }
+    if (inSetup.m_PushConstantRangeFrag.size != 0)
+    {
+      VkPushConstantRange& currPCRange{ PCRanges.emplace_back(inSetup.m_PushConstantRangeFrag) };
+      currPCRange.offset += PCRangeOffset;
+      outPipeline.m_PushConstantOffsets[1] = currPCRange.offset;  // yikes
+      PCRangeOffset += currPCRange.size;
+    }
+
     VkPipelineLayoutCreateInfo CreateInfo
     {
       .sType{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO },
       .setLayoutCount         { static_cast<uint32_t>(outPipeline.m_DescriptorSetLayouts.size()) },
       .pSetLayouts            { outPipeline.m_DescriptorSetLayouts.data() },
-      .pushConstantRangeCount { 0 },      // default to 0
-      .pPushConstantRanges    { nullptr } // default to nullptr
+      .pushConstantRangeCount { static_cast<uint32_t>(PCRanges.size()) },
+      .pPushConstantRanges    { PCRanges.data() }
     };
-
-    // push constant stuff
-    if (inSetup.m_PushConstantRangeVert.size != 0)
-    {
-      CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeVert;
-      CreateInfo.pushConstantRangeCount = (inSetup.m_PushConstantRangeFrag.size ? 2 : 1);
-    }
-    else if (inSetup.m_PushConstantRangeFrag.size != 0)
-    {
-      CreateInfo.pPushConstantRanges = &inSetup.m_PushConstantRangeFrag;
-      CreateInfo.pushConstantRangeCount = 1;
-    }
 
     outPipeline.m_PipelineLayout = pWH->createPipelineLayout(CreateInfo);
     if (outPipeline.m_PipelineLayout == VK_NULL_HANDLE)
@@ -1579,4 +1586,21 @@ void vulkanWindow::setUniform(vulkanPipeline& inPipeline, uint32_t shaderTarget,
   }
   std::memcpy(pDst, pData, dataLen);
   vkUnmapMemory(m_Device->m_VKDevice, targetBuffer.m_BufferMemory);
+}
+
+void vulkanPipeline::pushConstant(VkCommandBuffer FCB, VkShaderStageFlags stageFlags, uint32_t offsetInto, uint32_t srcSize, const void* srcData)
+{
+  assert(FCB != VK_NULL_HANDLE);
+  assert(srcSize && srcData);
+  switch (stageFlags)
+  {
+  case VK_SHADER_STAGE_VERTEX_BIT:
+    offsetInto += m_PushConstantOffsets[0];
+    break;
+  case VK_SHADER_STAGE_FRAGMENT_BIT:
+    offsetInto += m_PushConstantOffsets[1];
+    break;
+  default: break;
+  }
+  vkCmdPushConstants(FCB, m_PipelineLayout, stageFlags, offsetInto, srcSize, srcData);
 }

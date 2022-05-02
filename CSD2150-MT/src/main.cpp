@@ -266,7 +266,9 @@ int main()
     "A + UP/DOWN: Increase/Decrease ambient lighting\n"
     "R + UP/DOWN: Increase/Decrease directed light's Red intensity\n"
     "G + UP/DOWN: Increase/Decrease directed light's Green intensity\n"
-    "B + UP/DOWN: Increase/Decrease directed light's Blue intensity\n\n"
+    "B + UP/DOWN: Increase/Decrease directed light's Blue intensity\n"
+    "+: Increase Gamma (hold shift for quick change)\n"
+    "-: Decrease Gamma (hold shift for quick change)\n\n"
     "OTHER CONTROLS:\n"
     "F11: Enter fullscreen mode\n"
   );
@@ -337,7 +339,7 @@ int main()
         },
 
         .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
-        .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
+        .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<float>(VK_SHADER_STAGE_FRAGMENT_BIT) },
       }) || false == upVKWin->createPipelineInfo(carPipeline,
       vulkanPipeline::setup // ******************************* CAR PIPELINE ****
       {
@@ -374,7 +376,7 @@ int main()
       },
 
       .m_PushConstantRangeVert{ vulkanPipeline::createPushConstantInfo<glm::mat4>(VK_SHADER_STAGE_VERTEX_BIT) },
-      .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<>(VK_SHADER_STAGE_FRAGMENT_BIT) },
+      .m_PushConstantRangeFrag{ vulkanPipeline::createPushConstantInfo<float>(VK_SHADER_STAGE_FRAGMENT_BIT) },
       }))
     {
       printWarning("pipeline prep failed"sv, true);
@@ -518,17 +520,41 @@ int main()
           upVKWin->setUniform(carPipeline, 1, 2, &l_light, sizeof(l_light));
         }
 
+        static glm::vec2 s_gamma{ 2.25f, 1.0f / 2.25f };
+        static constexpr float sc_gammaMin{ 0.125f };
+        static constexpr float sc_gammaMax{ 22.5f };
+        if (win0Input.isPressed(VK_SHIFT) && win0Input.isPressed(VK_OEM_PLUS) || win0Input.isTriggered(VK_OEM_PLUS))
+        {
+          if (s_gamma.x != sc_gammaMax)
+          {
+            s_gamma.x = glm::clamp(s_gamma.x + 0.125f, sc_gammaMin, sc_gammaMax);
+            s_gamma.y = 1.0f / s_gamma.x;
+            printf_s("Gamma increased: %.3f\n", s_gamma.x);
+          }
+        }
+        else if (win0Input.isPressed(VK_SHIFT) && win0Input.isPressed(VK_OEM_MINUS) || win0Input.isTriggered(VK_OEM_MINUS))
+        {
+          if (s_gamma.x != sc_gammaMin)
+          {
+            s_gamma.x = glm::clamp(s_gamma.x - 0.125f, sc_gammaMin, sc_gammaMax);
+            s_gamma.y = 1.0f / s_gamma.x;
+            printf_s("Gamma decreased: %.3f\n", s_gamma.x);
+          }
+        }
+
         upVKWin->createAndSetPipeline(skullPipeline);
         { // skull object
           glm::mat4 xform{ cam.m_W2V * skullInfo.m_M2W };
-          vkCmdPushConstants(FCB, skullPipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(xform)), &xform);
+          skullPipeline.pushConstant(FCB, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(xform), &xform);
+          skullPipeline.pushConstant(FCB, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(s_gamma.y), &s_gamma.y);
           skullModel.draw(FCB);
         }
 
         upVKWin->createAndSetPipeline(carPipeline);
         { // car object
           glm::mat4 xform{ cam.m_W2V * carInfo.m_M2W };
-          vkCmdPushConstants(FCB, carPipeline.m_PipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, static_cast<uint32_t>(sizeof(xform)), &xform);
+          carPipeline.pushConstant(FCB, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(xform), &xform);
+          carPipeline.pushConstant(FCB, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(s_gamma.y), &s_gamma.y);
           carModel.draw(FCB);
         }
 

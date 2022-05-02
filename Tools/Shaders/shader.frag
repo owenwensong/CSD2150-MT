@@ -13,7 +13,7 @@ layout (set = 1, binding = 1) uniform u1v3
 layout (set = 1, binding = 2) uniform u2v3
 {
   vec3 u_LocalLightPos;
-	vec3 u_LocalLightCol;
+  vec3 u_LocalLightCol;
 };
 
 layout (set = 1, binding = 3) uniform sampler2D u_sColor;
@@ -27,18 +27,23 @@ layout(location = 2) in mat3 v_TBN;
 
 layout(location = 0) out vec4 f_FragColor;
 
-vec3 getNormal()// get from BC5 normal map
+layout(push_constant) uniform f_constants
 {
-	vec2 normXY = texture(u_sNormal, v_UV).rg * 2.0 - 1.0;
-	return v_TBN * vec3(normXY, sqrt(1.0 - dot(normXY, normXY)));
-}
+  layout(offset = 64) float pc_Gamma;
+};
 
-//vec3 getNormal()// get from R8G8B8A8_UNORM for directx
+//vec3 getNormal()// get from BC5 normal map
 //{
-//	vec3 norm = texture(u_sNormal, v_UV).rgb * 2.0 - 1.0;
-//	norm.g = -norm.g;
-//	return v_TBN * norm;
+//  vec2 normXY = texture(u_sNormal, v_UV).rg * 2.0 - 1.0;
+//  return v_TBN * vec3(normXY, sqrt(1.0 - dot(normXY, normXY)));
 //}
+
+vec3 getNormal()// get from R8G8B8A8_UNORM for directx
+{
+  vec3 norm = texture(u_sNormal, v_UV).rgb * 2.0 - 1.0;
+  norm.g = -norm.g;
+  return v_TBN * norm;
+}
 
 void main()
 {
@@ -57,5 +62,5 @@ void main()
 	f_FragColor = albedoColor;
 	f_FragColor.rgb *= u_AmbientStrength * texture(u_sAmbient, v_UV).rgb;
 	f_FragColor.rgb += u_LocalLightCol * ( specularAmt * roughness.r + angle * albedoColor.rgb );
-	f_FragColor.rgb = pow(f_FragColor.rgb, vec3(1.0/2.2));
+	f_FragColor.rgb = pow(f_FragColor.rgb, vec3(pc_Gamma));
 }

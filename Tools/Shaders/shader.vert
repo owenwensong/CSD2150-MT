@@ -11,7 +11,7 @@ layout(location = 2) out mat3 v_TBN;
 
 layout(push_constant) uniform constants
 {
-  mat4 pc_W2V;
+  layout(offset = 0) mat4 pc_W2V;
 };
 
 void main()
