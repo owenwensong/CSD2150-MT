@@ -45,6 +45,7 @@ std::vector<VkPhysicalDevice> collectPhysicalDevices(vulkanInstance& vkInst)
         {
             retval.erase(retval.begin() + i);// remove by iter
             --i;// don't increment i on next loop since element removed
+            --t;// bugfix for issue raised during CS350
         }
     }
     
@@ -199,6 +200,24 @@ void vulkanDevice::waitForDeviceIdle()
   }
 }
 
+static inline const char* getVKPhysicalDeviceTypeString(VkPhysicalDeviceType devType)
+{
+  switch (devType)
+  {
+  default:
+  case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+    return "unkown device";
+  case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+    return "integrated GPU";
+  case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+    return "discrete GPU";
+  case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+    return "virtual GPU";
+  case VK_PHYSICAL_DEVICE_TYPE_CPU:
+    return "CPU";
+  }
+}
+
 bool vulkanDevice::createThisDevice(std::shared_ptr<vulkanInstance>* optionalOverride)
 {
     if (isCreated)return true;
@@ -241,8 +260,14 @@ bool vulkanDevice::createThisDevice(std::shared_ptr<vulkanInstance>* optionalOve
                 uint32_t QueueIndex{ static_cast<uint32_t>(&Prop - DeviceProps.data()) };
                 if (initialize(QueueIndex, PhysicalDevice, std::move(DeviceProps)))
                 {
-                    isCreated = 1;
-                    return true;
+                  isCreated = 1;
+                  printf_s
+                  (
+                    "vulkan device initialized on the following %s: %s\n",
+                    getVKPhysicalDeviceTypeString(m_VKPhysicalDeviceProperties.deviceType),
+                    m_VKPhysicalDeviceProperties.deviceName
+                  );
+                  return true;
                 }
                 break;// must break since moving DeviceProps
             }

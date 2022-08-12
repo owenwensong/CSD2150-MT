@@ -17,6 +17,9 @@
 #include <utility/matrixTransforms.h>
 #include <utility/Timer.h>
 
+#define MTD_USE_VULKAN_VALIDATION_LAYER false
+#define MTD_USE_RENDERDOC_DEBUG_LAYER false
+
 struct originCamera  // struct just for this implementation always facing origin
 {
   float     m_Dist;
@@ -230,9 +233,13 @@ int main()
   {
     windowHandler::createInstance
     (
-      windowHandler::flagDebugPrint |
-      windowHandler::flagDebugLayer |
-      windowHandler::flagRenderDocLayer
+      windowHandler::flagDebugPrint
+#if MTD_USE_VULKAN_VALIDATION_LAYER
+      | windowHandler::flagDebugLayer
+#endif
+#if MTD_USE_RENDERDOC_DEBUG_LAYER
+      | windowHandler::flagRenderDocLayer
+#endif
     )
   };
   if (pWH == nullptr || !pWH->OK())
@@ -261,6 +268,10 @@ int main()
     "1: SKULL ONLY\n"
     "2: CAR ONLY\n"
     "3: BOTH (Skull will be in the seat :D)\n\n"
+    "CAMERA CONTROLS:\n"
+    "LMB/RMB (Hold): Adjust camera orbit\n"
+    "Scroll wheel up: Zoom in\n"
+    "Scroll wheel down: Zoom out\n\n"
     "LIGHTING CONTROLS:\n"
     "Spacebar: Toggle between directed light following or leave it behind\n"
     "A + UP/DOWN: Increase/Decrease ambient lighting\n"
@@ -411,36 +422,39 @@ int main()
         }
       };
 
-      glm::ivec2 cursorCurr;
-      win0Input.getCursorPos(cursorCurr.x, cursorCurr.y);
-      if (int scroll{ win0Input.getScrollSteps() }; scroll || win0Input.isPressed(VK_RBUTTON))
       {
-        // update cam rotation based on cursor delta (speed based on pixels)
-        glm::vec2 cursorDelta{ (cursorCurr - cam.m_CursorPrev) };
-        cursorDelta *= 0.0078125f;
-        cam.m_Rot.x -= cursorDelta.x;
-        cam.m_Rot.y = glm::clamp(cam.m_Rot.y + cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
-        
-        // update cam distance from origin based on scroll
-        cam.m_Dist = glm::clamp(cam.m_Dist - cam.s_ScrollSpeedMul * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
-
-        // update lookat
-        cam.m_Pos =
+        glm::ivec2 cursorCurr;
+        win0Input.getCursorPos(cursorCurr.x, cursorCurr.y);
+        float cursorDeltaMul{ win0Input.isPressed(VK_RBUTTON) || win0Input.isPressed(VK_LBUTTON) ? 0.0078125f : 0.0f };
+        if (int scroll{ win0Input.getScrollSteps() }; scroll || cursorDeltaMul != 0.0f)
         {
-          MTU::axisAngleRotation(cam.s_Up, cam.m_Rot.x, nullptr) *
-          glm::vec3{ cosf(cam.m_Rot.y), sinf(cam.m_Rot.y), 0.0f} * cam.m_Dist
-        };
+          // update cam rotation based on cursor delta (speed based on pixels)
+          glm::vec2 cursorDelta{ (cursorCurr - cam.m_CursorPrev) };
+          cursorDelta *= cursorDeltaMul;// bugfix 12/08/2022 for zoom affecting orbit
+          cam.m_Rot.x -= cursorDelta.x;
+          cam.m_Rot.y = glm::clamp(cam.m_Rot.y + cursorDelta.y, cam.s_RotYMin, cam.s_RotYMax);
 
-        cam.m_LookMat = glm::lookAt(cam.m_Pos, cam.s_Tgt, cam.s_Up);
+          // update cam distance from origin based on scroll
+          cam.m_Dist = glm::clamp(cam.m_Dist - cam.s_ScrollSpeedMul * scroll, cam.s_DistLimits.x, cam.s_DistLimits.y);
 
-        // update W2V matrix
-        cam.m_W2V = 
-        (
-          glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
-          cam.m_LookMat
-        );
+          // update lookat
+          cam.m_Pos =
+          {
+            MTU::axisAngleRotation(cam.s_Up, cam.m_Rot.x, nullptr) *
+            glm::vec3{ cosf(cam.m_Rot.y), sinf(cam.m_Rot.y), 0.0f} *cam.m_Dist
+          };
+
+          cam.m_LookMat = glm::lookAt(cam.m_Pos, cam.s_Tgt, cam.s_Up);
+
+          // update W2V matrix
+          cam.m_W2V =
+          (
+            glm::perspective(originCamera::s_CamFOV, AR, originCamera::s_Near, originCamera::s_Far) *
+            cam.m_LookMat
+          );
+        }
+        cam.m_CursorPrev = cursorCurr;
       }
-      cam.m_CursorPrev = cursorCurr;
 
       // ******************************************** CAMERA UPDATE END ****
       // *******************************************************************
