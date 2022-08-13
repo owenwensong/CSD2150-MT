@@ -19,6 +19,7 @@ To view the demo without compiling, download the MTDemo from the releases page.<
 
 ## Project requires:</br>
 - A version of Visual Studio supporting C++20</br>
+- Vulkan SDK 1.2.198.1 or above installed
 
 #### important folders for the project
 - Assets folder (for the meshes, textures, shaders used)</br>
